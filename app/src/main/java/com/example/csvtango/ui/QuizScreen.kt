@@ -301,10 +301,6 @@ private fun ResultPanel(
                 Text(card.ko, fontSize = 15.sp, lineHeight = 22.sp, color = Muted)
             }
 
-            if (card.exJp.isNotEmpty() || card.exKana.isNotEmpty() || card.exKo.isNotEmpty()) {
-                ExampleSection(card, speaker, tint)
-            }
-
             Row(
                 Modifier.padding(top = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -329,8 +325,9 @@ private fun ResultPanel(
                     Text("★ 북마크에 저장했습니다", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Gold)
                 }
             }
-            if (ok && result.unbookmarked && !bookmarked) {
-                Text("맞힌 단어라 북마크에서 해제했습니다", fontSize = 12.5.sp, color = Muted)
+
+            if (card.exJp.isNotEmpty() || card.exKana.isNotEmpty() || card.exKo.isNotEmpty()) {
+                ExampleSection(card, speaker, tint)
             }
         }
     }

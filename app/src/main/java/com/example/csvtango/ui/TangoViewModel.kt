@@ -331,10 +331,9 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
 
         val question = current.current
         val correct = question.isCorrect(input)
-        val unbookmarked = correct && isBookmarked(question.card)
         setBookmark(question.card, !correct)
 
-        quiz = current.copy(pending = QuizResult(question, input, correct, unbookmarked))
+        quiz = current.copy(pending = QuizResult(question, input, correct))
     }
 
     /** 채점 결과를 확정하고 다음 문제로 넘어간다. */

@@ -74,8 +74,6 @@ data class QuizResult(
     val question: QuizQuestion,
     val input: String,
     val correct: Boolean,
-    /** 맞혀서 원래 있던 북마크를 해제했는지. */
-    val unbookmarked: Boolean = false,
 )
 
 /**
