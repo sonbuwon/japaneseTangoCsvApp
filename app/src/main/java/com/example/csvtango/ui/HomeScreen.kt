@@ -34,6 +34,8 @@ import com.example.csvtango.ui.theme.GoldSoft
 import com.example.csvtango.ui.theme.Ink
 import com.example.csvtango.ui.theme.Line
 import com.example.csvtango.ui.theme.Muted
+import com.example.csvtango.ui.theme.OkBg
+import com.example.csvtango.ui.theme.OkInk
 import com.example.csvtango.ui.theme.Paper
 import com.example.csvtango.ui.theme.Sheet
 
@@ -45,6 +47,7 @@ fun HomeScreen(
     bookmarkCount: Int,
     onMemorize: () -> Unit,
     onQuiz: () -> Unit,
+    onAdd: () -> Unit,
 ) {
     val hasWords = wordCount > 0
 
@@ -64,8 +67,63 @@ fun HomeScreen(
                 .windowInsetsPadding(WindowInsets.navigationBars),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            Row(
+                Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("무엇을 할까요?", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Muted)
+                PrimaryButton("+ CSV 추가", onAdd)
+            }
+
+            ModeCard(
+                glyph = "📚",
+                title = "암기",
+                detail = when {
+                    !hasWords -> "[+ CSV 추가]로 단어장을 만듭니다"
+                    bookmarkCount > 0 -> "주제 ${topicCount}개 · 단어 ${wordCount}개 · 북마크 ${bookmarkCount}개"
+                    else -> "주제 ${topicCount}개 · 단어 ${wordCount}개"
+                },
+                onClick = onMemorize,
+            )
+
+            ModeCard(
+                glyph = "✏️",
+                title = "시험",
+                detail = if (hasWords) null else "먼저 [+ CSV 추가]로 단어장을 추가해 주세요",
+                enabled = hasWords,
+                onClick = onQuiz,
+                badgeBackground = GoldSoft,
+                badgeTint = Gold,
+            )
+        }
+    }
+}
+
+/** 시험 종류 선택. [주제 시험]·[종합 시험] 순으로 보여 준다. */
+@Composable
+fun QuizMenuScreen(
+    topicCount: Int,
+    onTopicQuiz: () -> Unit,
+    onCombinedQuiz: () -> Unit,
+    onBack: () -> Unit,
+) {
+    Column(Modifier.fillMaxSize().background(Paper)) {
+        TopBar {
+            GhostButton("‹ 홈", onBack)
+            Text("시험", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Ink)
+        }
+
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 24.dp)
+                .windowInsetsPadding(WindowInsets.navigationBars),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Text(
-                "무엇을 할까요?",
+                "어떤 시험을 볼까요?",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Muted,
@@ -73,24 +131,21 @@ fun HomeScreen(
             )
 
             ModeCard(
-                glyph = "📚",
-                title = "암기",
-                detail = if (hasWords) "주제 ${topicCount}개 · 단어 ${wordCount}개" else "CSV 파일을 올려 단어장을 만듭니다",
-                onClick = onMemorize,
+                glyph = "✏️",
+                title = "주제 시험",
+                detail = "주제 하나를 골라 범위를 정해 출제 · 주제 ${topicCount}개",
+                onClick = onTopicQuiz,
+                badgeBackground = GoldSoft,
+                badgeTint = Gold,
             )
 
             ModeCard(
-                glyph = "✏️",
-                title = "시험",
-                detail = when {
-                    !hasWords -> "먼저 [암기]에서 단어장을 추가해 주세요"
-                    bookmarkCount > 0 -> "북마크 ${bookmarkCount}개"
-                    else -> null
-                },
-                enabled = hasWords,
-                onClick = onQuiz,
-                badgeBackground = GoldSoft,
-                badgeTint = Gold,
+                glyph = "🎯",
+                title = "종합 시험",
+                detail = "여러 목록에서 무작위로 출제",
+                onClick = onCombinedQuiz,
+                badgeBackground = OkBg,
+                badgeTint = OkInk,
             )
         }
     }

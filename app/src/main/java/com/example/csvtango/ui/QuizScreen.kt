@@ -54,6 +54,7 @@ import com.example.csvtango.data.PromptKind
 import com.example.csvtango.data.QuizQuestion
 import com.example.csvtango.data.QuizResult
 import com.example.csvtango.data.QuizSession
+import com.example.csvtango.data.StudyCard
 import com.example.csvtango.speech.JapaneseSpeaker
 import com.example.csvtango.speech.SpeechTarget
 import com.example.csvtango.speech.firstReading
@@ -86,13 +87,15 @@ fun QuizScreen(
     onSubmit: (String) -> Unit,
     onNext: () -> Unit,
     onToggleBookmark: () -> Unit,
+    isBookmarked: (StudyCard) -> Boolean,
+    onToggleCardBookmark: (StudyCard) -> Unit,
     onRetryWrong: () -> Unit,
     onRestart: () -> Unit,
     onSetup: () -> Unit,
     onHome: () -> Unit,
 ) {
     if (session.finished) {
-        ResultView(session, onRetryWrong, onRestart, onSetup, onHome)
+        ResultView(session, isBookmarked, onToggleCardBookmark, onRetryWrong, onRestart, onSetup, onHome)
         return
     }
 
@@ -140,9 +143,9 @@ fun QuizScreen(
                     color = Muted,
                 )
             } else {
-                ResultPanel(pending, bookmarked, speaker, onToggleBookmark)
                 val last = session.index == session.questions.lastIndex
                 BigButton(if (last) "결과 보기" else "다음 ›", onNext)
+                ResultPanel(pending, bookmarked, speaker, onToggleBookmark)
             }
         }
     }
@@ -430,6 +433,8 @@ private fun BigButton(text: String, onClick: () -> Unit, primary: Boolean = true
 @Composable
 private fun ResultView(
     session: QuizSession,
+    isBookmarked: (StudyCard) -> Boolean,
+    onToggleBookmark: (StudyCard) -> Unit,
     onRetryWrong: () -> Unit,
     onRestart: () -> Unit,
     onSetup: () -> Unit,
@@ -504,7 +509,8 @@ private fun ResultView(
                 Surface(shape = RoundedCornerShape(16.dp), color = Sheet, border = BorderStroke(1.dp, Line)) {
                     Column {
                         wrong.forEachIndexed { i, r ->
-                            WrongRow(r)
+                            val card = r.question.card
+                            WrongRow(r, bookmarked = isBookmarked(card), onToggleBookmark = { onToggleBookmark(card) })
                             if (i < wrong.lastIndex) HorizontalDivider(color = Line.copy(alpha = .6f))
                         }
                     }
@@ -515,7 +521,7 @@ private fun ResultView(
 }
 
 @Composable
-private fun WrongRow(result: QuizResult) {
+private fun WrongRow(result: QuizResult, bookmarked: Boolean, onToggleBookmark: () -> Unit) {
     val card = result.question.card.card
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
@@ -530,7 +536,20 @@ private fun WrongRow(result: QuizResult) {
             Text(card.ko, fontSize = 12.5.sp, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text("입력: ${result.input.trim()}", fontSize = 12.sp, color = ErrInk.copy(alpha = .8f))
         }
-        Text("★", fontSize = 14.sp, color = Gold)
+        // 누를 때마다 북마크를 켜고 끈다.
+        Surface(
+            onClick = onToggleBookmark,
+            shape = CircleShape,
+            color = if (bookmarked) GoldSoft else FieldBg,
+            border = BorderStroke(1.dp, if (bookmarked) Gold else Line),
+        ) {
+            Text(
+                if (bookmarked) "★" else "☆",
+                fontSize = 18.sp,
+                color = if (bookmarked) Gold else StarOff,
+                modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
+            )
+        }
     }
 }
 

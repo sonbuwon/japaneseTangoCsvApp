@@ -62,8 +62,8 @@ fun QuizSetupScreen(
 ) {
     Column(Modifier.fillMaxSize().background(Paper)) {
         TopBar {
-            GhostButton("‹ 홈", onBack)
-            Text("시험 설정", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Ink)
+            GhostButton("‹ 시험", onBack)
+            Text("주제 시험", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Ink)
         }
 
         LazyColumn(
@@ -183,7 +183,7 @@ fun QuizSetupScreen(
 }
 
 @Composable
-private fun StartButton(text: String, enabled: Boolean, onClick: () -> Unit) {
+internal fun StartButton(text: String, enabled: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         enabled = enabled,
@@ -203,7 +203,7 @@ private fun StartButton(text: String, enabled: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SelectRow(
+internal fun SelectRow(
     checked: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
@@ -263,7 +263,7 @@ private fun CheckMark(checked: Boolean) {
 }
 
 @Composable
-private fun Badge(text: String, background: Color = AccentSoft, tint: Color = Accent) {
+internal fun Badge(text: String, background: Color = AccentSoft, tint: Color = Accent) {
     Box(
         Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(background),
         contentAlignment = Alignment.Center,

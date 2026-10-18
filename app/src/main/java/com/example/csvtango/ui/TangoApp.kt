@@ -28,14 +28,21 @@ fun TangoApp(vm: TangoViewModel = viewModel()) {
             wordCount = vm.wordCount,
             bookmarkCount = vm.bookmarkCount,
             onMemorize = vm::goMemorize,
-            onQuiz = vm::goQuizSetup,
+            onQuiz = vm::goQuizMenu,
+            onAdd = vm::goUpload,
+        )
+
+        Screen.QUIZ_MENU -> QuizMenuScreen(
+            topicCount = vm.topics.size,
+            onTopicQuiz = vm::goQuizSetup,
+            onCombinedQuiz = vm::goCombinedSetup,
+            onBack = vm::goHome,
         )
 
         Screen.MEMORIZE -> MemorizeScreen(
             topics = vm.topics,
             bookmarkCount = vm.bookmarkCount,
             onBack = vm::goHome,
-            onAdd = vm::goUpload,
             onOpenTopic = vm::openTopic,
             onOpenBookmarks = vm::openBookmarks,
             onClearBookmarks = vm::clearBookmarks,
@@ -47,7 +54,7 @@ fun TangoApp(vm: TangoViewModel = viewModel()) {
         )
 
         Screen.UPLOAD -> UploadScreen(
-            onBack = vm::goMemorize,
+            onBack = vm::goHome,
             onSave = vm::addTopic,
         )
 
@@ -73,7 +80,7 @@ fun TangoApp(vm: TangoViewModel = viewModel()) {
             wordCount = vm.quizWords().size,
             onSelect = vm::selectQuizSource,
             onToggleShuffle = vm::toggleQuizShuffle,
-            onBack = vm::goHome,
+            onBack = vm::goQuizMenu,
             onNext = vm::goQuizRange,
         )
 
@@ -87,18 +94,33 @@ fun TangoApp(vm: TangoViewModel = viewModel()) {
             onStart = vm::startQuiz,
         )
 
+        Screen.COMBINED_SETUP -> CombinedQuizScreen(
+            topics = vm.topics,
+            bookmarkCount = vm.bookmarkCount,
+            selected = vm.combinedSources,
+            countText = vm.combinedCountText,
+            available = vm.combinedAvailable,
+            questionCount = vm.combinedQuestionCount,
+            onToggle = vm::toggleCombinedSource,
+            onCountChange = vm::changeCombinedCount,
+            onBack = vm::goQuizMenu,
+            onStart = vm::startCombinedQuiz,
+        )
+
         Screen.QUIZ -> vm.quiz?.let { quiz ->
             QuizScreen(
                 session = quiz,
                 bookmarked = quiz.pending?.let { vm.isBookmarked(it.question.card) } ?: false,
                 speaker = speaker,
-                onQuit = { speaker.stop(); vm.goQuizRange() },
+                onQuit = { speaker.stop(); vm.leaveQuiz() },
                 onSubmit = vm::submitAnswer,
                 onNext = { speaker.stop(); vm.nextQuestion() },
                 onToggleBookmark = vm::toggleQuizBookmark,
+                isBookmarked = vm::isBookmarked,
+                onToggleCardBookmark = vm::toggleCardBookmark,
                 onRetryWrong = vm::retryWrong,
                 onRestart = vm::restartQuiz,
-                onSetup = vm::goQuizSetup,
+                onSetup = vm::goQuizOriginSetup,
                 onHome = vm::goHome,
             )
         }

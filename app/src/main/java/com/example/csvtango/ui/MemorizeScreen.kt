@@ -68,7 +68,6 @@ fun MemorizeScreen(
     topics: List<Topic>,
     bookmarkCount: Int,
     onBack: () -> Unit,
-    onAdd: () -> Unit,
     onOpenTopic: (Topic) -> Unit,
     onOpenBookmarks: () -> Unit,
     onClearBookmarks: () -> Unit,
@@ -108,17 +107,14 @@ fun MemorizeScreen(
                         fontWeight = FontWeight.SemiBold,
                         color = if (editing) Accent else Muted,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (topics.isNotEmpty()) {
-                            GhostButton(if (editing) "완료" else "편집", onToggleEdit)
-                        }
-                        PrimaryButton("+ CSV 추가", onAdd)
+                    if (topics.isNotEmpty()) {
+                        GhostButton(if (editing) "완료" else "편집", onToggleEdit)
                     }
                 }
             }
 
             if (topics.isEmpty()) {
-                item { EmptyHome(onAdd) }
+                item { EmptyHome() }
             } else {
                 if (!editing) {
                     item {
@@ -357,17 +353,7 @@ private fun BookmarkRow(count: Int, onClick: () -> Unit, onClearAll: () -> Unit)
 }
 
 @Composable
-private fun Badge(text: String, background: Color = AccentSoft, tint: Color = Accent) {
-    Box(
-        Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(background),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = tint)
-    }
-}
-
-@Composable
-private fun EmptyHome(onAdd: () -> Unit) {
+private fun EmptyHome() {
     Column(
         Modifier.fillMaxWidth().padding(vertical = 56.dp, horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -380,13 +366,10 @@ private fun EmptyHome(onAdd: () -> Unit) {
             modifier = Modifier.padding(top = 12.dp),
         )
         Text(
-            "CSV 파일을 올려 첫 단어장을 만들어 보세요.",
+            "홈 화면의 [+ CSV 추가]로 첫 단어장을 만들어 보세요.",
             fontSize = 14.sp,
             color = Muted,
             modifier = Modifier.padding(top = 4.dp),
         )
-        Box(Modifier.padding(top = 18.dp).width(140.dp)) {
-            PrimaryButton("+ CSV 추가", onAdd, Modifier.fillMaxWidth())
-        }
     }
 }

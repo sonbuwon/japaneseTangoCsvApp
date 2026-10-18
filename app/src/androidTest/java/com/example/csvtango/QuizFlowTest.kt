@@ -53,6 +53,7 @@ class QuizFlowTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             // 홈 → 시험
             compose.onNodeWithText("시험").performClick()
+            compose.onNodeWithText("주제 시험").performClick()
             compose.onNodeWithText("순서 섞기").performClick()   // 섞기 끄기
             compose.onNodeWithText("단어 목록 보기 · 2개").performClick()
 
@@ -96,6 +97,7 @@ class QuizFlowTest {
     fun quizFlow_correctWithoutManualBookmark_leavesCardUnmarked() {
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.onNodeWithText("시험").performClick()
+            compose.onNodeWithText("주제 시험").performClick()
             compose.onNodeWithText("순서 섞기").performClick()
             compose.onNodeWithText("단어 목록 보기 · 2개").performClick()
             compose.onNodeWithText("시험 시작 · 2문제").performClick()

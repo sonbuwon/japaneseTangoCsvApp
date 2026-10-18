@@ -24,11 +24,17 @@ enum class Screen {
     UPLOAD,
     STUDY,
 
-    /** 시험: 목록(주제·북마크) 하나와 옵션 선택 */
+    /** 시험: [주제 시험]·[종합 시험] 선택 */
+    QUIZ_MENU,
+
+    /** 주제 시험: 목록(주제·북마크) 하나와 옵션 선택 */
     QUIZ_SETUP,
 
     /** 시험: 고른 목록의 단어를 보여 주고 출제 범위를 정한다 */
     QUIZ_RANGE,
+
+    /** 종합 시험: 목록 여러 개와 문제 수를 고른다. 순서는 항상 무작위 */
+    COMBINED_SETUP,
     QUIZ,
 }
 
@@ -82,6 +88,11 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
         screen = Screen.UPLOAD
     }
 
+    fun goQuizMenu() {
+        quiz = null
+        screen = Screen.QUIZ_MENU
+    }
+
     fun goQuizSetup() {
         quiz = null
         // 고른 목록이 사라졌거나(주제 삭제·북마크 해제) 아직 없으면 첫 주제를 골라 둔다.
@@ -106,10 +117,13 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
         when (screen) {
             Screen.HOME -> Unit
             Screen.MEMORIZE -> goHome()
-            Screen.UPLOAD, Screen.STUDY -> goMemorize()
-            Screen.QUIZ_SETUP -> goHome()
+            Screen.UPLOAD -> goHome()
+            Screen.STUDY -> goMemorize()
+            Screen.QUIZ_MENU -> goHome()
+            Screen.QUIZ_SETUP -> goQuizMenu()
             Screen.QUIZ_RANGE -> goQuizSetup()
-            Screen.QUIZ -> goQuizRange()
+            Screen.COMBINED_SETUP -> goQuizMenu()
+            Screen.QUIZ -> leaveQuiz()
         }
     }
 
@@ -316,12 +330,79 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
         val whole = quizRange.first == 0 && quizRange.last == quizWords().lastIndex
         val title = if (whole) quizSourceTitle
         else "$quizSourceTitle (${quizRange.first + 1}~${quizRange.last + 1})"
+        quizCombined = false
         launchQuiz(title, questions)
     }
 
+    /** 종합 시험은 순서를 무조건 섞는다. 다시 시험·틀린 단어 다시 시험도 마찬가지. */
     private fun launchQuiz(title: String, questions: List<QuizQuestion>) {
-        quiz = QuizSession(title, if (quizShuffle) questions.shuffled() else questions)
+        quiz = QuizSession(title, if (quizCombined || quizShuffle) questions.shuffled() else questions)
         screen = Screen.QUIZ
+    }
+
+    /** 시험을 그만두면 시험을 고른 화면으로 돌아간다. (일반: 범위 지정, 종합: 종합 시험 설정) */
+    fun leaveQuiz() {
+        if (quizCombined) goCombinedSetup() else goQuizRange()
+    }
+
+    /** 결과 화면의 [시험 설정]. */
+    fun goQuizOriginSetup() {
+        if (quizCombined) goCombinedSetup() else goQuizSetup()
+    }
+
+    /* ---------------- 종합 시험 ---------------- */
+
+    /** 지금 시험이 종합 시험인지. */
+    private var quizCombined = false
+
+    /** 종합 시험에 넣을 목록들. 주제 id 또는 [BOOKMARK_SOURCE]. 여러 개 고른다. */
+    var combinedSources by mutableStateOf<Set<String>>(emptySet())
+        private set
+
+    /** 입력란에 적힌 문제 수(숫자만). */
+    var combinedCountText by mutableStateOf("20")
+        private set
+
+    fun goCombinedSetup() {
+        quiz = null
+        // 지워진 주제, 비어 버린 북마크는 선택에서 뺀다.
+        val ids = topics.map { it.id }.toSet() + (if (bookmarkCount > 0) setOf(BOOKMARK_SOURCE) else emptySet())
+        combinedSources = combinedSources intersect ids
+        screen = Screen.COMBINED_SETUP
+    }
+
+    fun toggleCombinedSource(source: String) {
+        if (source == BOOKMARK_SOURCE && bookmarkCount == 0) return
+        combinedSources = if (source in combinedSources) combinedSources - source else combinedSources + source
+    }
+
+    fun changeCombinedCount(text: String) {
+        combinedCountText = text.filter(Char::isDigit).take(4)
+    }
+
+    /** 고른 목록들의 단어를 모은 것. 같은 카드는 한 번만, 정답을 아는 카드만. */
+    private fun combinedPool(): List<QuizQuestion> {
+        val fromTopics = topics.filter { it.id in combinedSources }.flatMap { it.studyCards() }
+        val fromBookmarks = if (BOOKMARK_SOURCE in combinedSources) bookmarkedCards() else emptyList()
+        return (fromTopics + fromBookmarks)
+            .distinctBy { it.topicId to it.index }
+            .map(::QuizQuestion)
+            .filter { it.answerable }
+    }
+
+    /** 고른 목록들에서 낼 수 있는 최대 문제 수. */
+    val combinedAvailable: Int
+        get() = combinedPool().size
+
+    /** 실제로 낼 문제 수. 입력한 수가 낼 수 있는 수보다 많으면 낼 수 있는 만큼만. */
+    val combinedQuestionCount: Int
+        get() = minOf(combinedCountText.toIntOrNull() ?: 0, combinedAvailable)
+
+    fun startCombinedQuiz() {
+        val count = combinedQuestionCount
+        if (count <= 0) return
+        quizCombined = true
+        launchQuiz("종합 시험", combinedPool().shuffled().take(count))
     }
 
     /** 답을 채점한다. 틀리면 그 단어를 북마크하고, 맞히면 북마크를 해제한다. */
@@ -346,6 +427,11 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
     /** 방금 채점한 카드의 북마크를 켜거나 끈다. (맞힌 단어를 손수 저장할 때) */
     fun toggleQuizBookmark() {
         val card = quiz?.pending?.question?.card ?: return
+        setBookmark(card, !isBookmarked(card))
+    }
+
+    /** 결과 화면의 틀린 단어 목록에서 북마크를 켜거나 끈다. */
+    fun toggleCardBookmark(card: StudyCard) {
         setBookmark(card, !isBookmarked(card))
     }
 
