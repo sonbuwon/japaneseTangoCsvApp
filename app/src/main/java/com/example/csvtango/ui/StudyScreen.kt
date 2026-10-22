@@ -11,9 +11,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -58,6 +60,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +69,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -74,7 +79,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import com.example.csvtango.data.Card
 import com.example.csvtango.data.StudySession
 import com.example.csvtango.speech.JapaneseSpeaker
@@ -150,6 +157,7 @@ fun StudyScreen(
                 flipped = flipped,
                 speaker = speaker,
                 onFlip = onFlip,
+                onSwipe = onMove,
                 onToggleBookmark = onToggleBookmark,
                 modifier = Modifier.weight(1f).padding(top = 6.dp),
             )
@@ -376,6 +384,7 @@ private fun Flashcard(
     flipped: Boolean,
     speaker: JapaneseSpeaker,
     onFlip: () -> Unit,
+    onSwipe: (Int) -> Unit,
     onToggleBookmark: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -385,7 +394,54 @@ private fun Flashcard(
         label = "flip",
     )
 
-    Box(modifier.fillMaxWidth().heightIn(min = 260.dp)) {
+    // 좌우 스와이프: 카드가 손가락을 따라오다가, 충분히 밀거나 빠르게 튕기면 넘어간다.
+    val scope = rememberCoroutineScope()
+    val swipeX = remember { Animatable(0f) }
+    val currentOnSwipe by rememberUpdatedState(onSwipe)
+
+    Box(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = 260.dp)
+            .pointerInput(Unit) {
+                val velocity = VelocityTracker()
+                detectHorizontalDragGestures(
+                    onDragStart = { velocity.resetTracking() },
+                    onDragEnd = {
+                        val width = size.width.toFloat()
+                        val vx = velocity.calculateVelocity().x
+                        val x = swipeX.value
+                        // 왼쪽으로 밀면 다음, 오른쪽으로 밀면 이전 카드
+                        val step = when {
+                            x < -width * .25f || (vx < -1200f && x < 0f) -> 1
+                            x > width * .25f || (vx > 1200f && x > 0f) -> -1
+                            else -> 0
+                        }
+                        scope.launch {
+                            if (step == 0) {
+                                swipeX.animateTo(0f, spring())
+                            } else {
+                                swipeX.animateTo(-step * width * 1.2f, tween(160))
+                                currentOnSwipe(step)
+                                // 새 카드는 반대쪽에서 들어온다.
+                                swipeX.snapTo(step * width * 1.2f)
+                                swipeX.animateTo(0f, tween(220))
+                            }
+                        }
+                    },
+                    onDragCancel = { scope.launch { swipeX.animateTo(0f, spring()) } },
+                ) { change, amount ->
+                    change.consume()
+                    velocity.addPosition(change.uptimeMillis, change.position)
+                    scope.launch { swipeX.snapTo(swipeX.value + amount) }
+                }
+            }
+            .graphicsLayer {
+                translationX = swipeX.value
+                rotationZ = if (size.width > 0f) swipeX.value / size.width * 8f else 0f
+                alpha = if (size.width > 0f) 1f - (abs(swipeX.value) / size.width * .5f).coerceAtMost(.5f) else 1f
+            },
+    ) {
         Surface(
             shape = RoundedCornerShape(20.dp),
             color = Sheet,
@@ -419,7 +475,7 @@ private fun FrontFace(card: Card, speaker: JapaneseSpeaker, onToggleBookmark: ()
     val context = LocalContext.current
 
     Face(
-        hint = "카드를 눌러 뒤집기",
+        hint = "눌러서 뒤집기 · 좌우로 밀어 넘기기",
         // 앞면에 붙여 카드와 함께 넘어가게 한다.
         overlay = {
             BookmarkButton(
