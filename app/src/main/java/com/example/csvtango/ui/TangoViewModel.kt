@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import com.example.csvtango.data.Card
+import com.example.csvtango.data.Folder
 import com.example.csvtango.data.QuizQuestion
 import com.example.csvtango.data.QuizResult
 import com.example.csvtango.data.QuizSession
@@ -13,14 +14,18 @@ import com.example.csvtango.data.StudyCard
 import com.example.csvtango.data.StudySession
 import com.example.csvtango.data.Topic
 import com.example.csvtango.data.TopicStore
+import com.example.csvtango.data.moveAmong
 import kotlin.random.Random
 
 enum class Screen {
     /** 첫 화면. [암기]/[시험] 선택 */
     HOME,
 
-    /** 암기: 주제 목록 */
+    /** 암기: 폴더·주제 목록. 폴더를 열면 같은 화면에 그 폴더의 주제를 보여 준다 */
     MEMORIZE,
+
+    /** 암기 북마크: [전체 북마크]와 북마크가 있는 주제별 목록. 하나를 고르면 카드 학습으로 간다 */
+    BOOKMARKS,
     UPLOAD,
     STUDY,
 
@@ -50,7 +55,14 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
     var topics by mutableStateOf(store.load())
         private set
 
+    var folders by mutableStateOf(store.loadFolders())
+        private set
+
     var screen by mutableStateOf(Screen.HOME)
+        private set
+
+    /** 암기 화면에서 열어 둔 폴더의 id. null 이면 맨 위(폴더 밖)를 보고 있다. */
+    var openFolderId by mutableStateOf<String?>(null)
         private set
 
     var session by mutableStateOf<StudySession?>(null)
@@ -60,7 +72,7 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
     var flipped by mutableStateOf(false)
         private set
 
-    /** 암기 주제 목록의 편집 모드(순서 변경·제목 변경·삭제). */
+    /** 암기 목록의 편집 모드(순서 변경·제목 변경·삭제·폴더 이동). */
     var editing by mutableStateOf(false)
 
     val bookmarkCount: Int
@@ -75,12 +87,20 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
         session = null
         quiz = null
         editing = false
+        openFolderId = null
         screen = Screen.HOME
     }
 
     fun goMemorize() {
         session = null
         screen = Screen.MEMORIZE
+    }
+
+    /** 암기 북마크 목록(전체·주제별). */
+    fun goBookmarks() {
+        session = null
+        editing = false
+        screen = Screen.BOOKMARKS
     }
 
     fun goUpload() {
@@ -116,9 +136,10 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
     fun back() {
         when (screen) {
             Screen.HOME -> Unit
-            Screen.MEMORIZE -> goHome()
-            Screen.UPLOAD -> goHome()
-            Screen.STUDY -> goMemorize()
+            Screen.MEMORIZE -> if (openFolderId != null) closeFolder() else goHome()
+            Screen.BOOKMARKS -> goMemorize()
+            Screen.UPLOAD -> goMemorize()
+            Screen.STUDY -> if (studyFromBookmarks) goBookmarks() else goMemorize()
             Screen.QUIZ_MENU -> goHome()
             Screen.QUIZ_SETUP -> goQuizMenu()
             Screen.QUIZ_RANGE -> goQuizSetup()
@@ -129,9 +150,11 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
 
     /* ---------------- 주제 ---------------- */
 
+    private fun newId(): String = System.currentTimeMillis().toString() + Random.nextInt(0x100000).toString(16)
+
     fun addTopic(title: String, cards: List<Card>) {
         val topic = Topic(
-            id = System.currentTimeMillis().toString() + Random.nextInt(0x100000).toString(16),
+            id = newId(),
             title = title,
             cards = cards,
             createdAt = System.currentTimeMillis(),
@@ -158,18 +181,79 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
-    /** 목록에서 한 칸 위(-1)나 아래(+1)로 옮긴다. */
+    /** 같은 폴더(또는 폴더 밖)의 주제들 사이에서 한 칸 위(-1)나 아래(+1)로 옮긴다. */
     fun moveTopic(topic: Topic, delta: Int) {
-        val from = topics.indexOfFirst { it.id == topic.id }
-        val to = from + delta
-        if (from < 0 || to !in topics.indices) return
+        val current = topics.find { it.id == topic.id } ?: return
+        val folder = folderOf(current)
+        val next = topics.moveAmong(current, delta) { folderOf(it) == folder }
+        if (next !== topics) update(next)
+    }
 
-        update(topics.toMutableList().apply { add(to, removeAt(from)) })
+    /** 주제를 다른 폴더로 옮긴다. [folderId] 가 null 이면 폴더 밖으로 꺼낸다. */
+    fun moveTopicToFolder(topic: Topic, folderId: String?) {
+        if (folderId != null && folders.none { it.id == folderId }) return
+        update(topics.map { if (it.id == topic.id) it.copy(folderId = folderId) else it })
     }
 
     private fun update(next: List<Topic>) {
         topics = next
         store.save(next)
+    }
+
+    /* ---------------- 폴더 ---------------- */
+
+    /** 지금 열려 있는 폴더. */
+    val openFolder: Folder?
+        get() = folders.find { it.id == openFolderId }
+
+    /** 주제가 실제로 들어 있는 폴더의 id. 사라진 폴더를 가리키면 폴더 밖(null)으로 본다. */
+    private fun folderOf(topic: Topic): String? =
+        topic.folderId?.takeIf { id -> folders.any { it.id == id } }
+
+    /** [folderId] 폴더(null 이면 폴더 밖)에 든 주제들. 목록 순서 그대로. */
+    fun topicsIn(folderId: String?): List<Topic> = topics.filter { folderOf(it) == folderId }
+
+    fun enterFolder(folder: Folder) {
+        editing = false
+        openFolderId = folder.id
+    }
+
+    fun closeFolder() {
+        editing = false
+        openFolderId = null
+    }
+
+    fun createFolder(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        updateFolders(folders + Folder(id = newId(), name = trimmed, createdAt = System.currentTimeMillis()))
+    }
+
+    fun renameFolder(folder: Folder, name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        updateFolders(folders.map { if (it.id == folder.id) it.copy(name = trimmed) else it })
+    }
+
+    /** 폴더를 지운다. 안에 있던 주제는 지우지 않고 폴더 밖으로 꺼낸다. */
+    fun deleteFolder(folder: Folder) {
+        if (topics.any { it.folderId == folder.id }) {
+            update(topics.map { if (it.folderId == folder.id) it.copy(folderId = null) else it })
+        }
+        updateFolders(folders.filterNot { it.id == folder.id })
+        if (openFolderId == folder.id) closeFolder()
+    }
+
+    /** 폴더 목록에서 한 칸 위(-1)나 아래(+1)로 옮긴다. */
+    fun moveFolder(folder: Folder, delta: Int) {
+        val current = folders.find { it.id == folder.id } ?: return
+        val next = folders.moveAmong(current, delta) { true }
+        if (next !== folders) updateFolders(next)
+    }
+
+    private fun updateFolders(next: List<Folder>) {
+        folders = next
+        store.saveFolders(next)
     }
 
     /* ---------------- 북마크 ---------------- */
@@ -198,24 +282,40 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
 
     /* ---------------- 학습(암기) ---------------- */
 
+    /** 지금 학습이 북마크 목록에서 시작됐는지. 뒤로 가기에서 돌아갈 화면을 정한다. */
+    var studyFromBookmarks by mutableStateOf(false)
+        private set
+
     fun openTopic(topic: Topic) {
-        start(topic.title, topic.studyCards())
+        start(topic.title, topic.studyCards(), fromBookmarks = false)
     }
 
     /** 모든 주제에서 북마크한 단어만 모아 하나의 카드 묶음으로 만든다. */
     fun openBookmarks() {
-        val cards = bookmarkedCards()
-        if (cards.isEmpty()) return
-        start(BOOKMARK_TITLE, cards)
+        start(BOOKMARK_TITLE, bookmarkedCards(), fromBookmarks = true)
     }
+
+    /** 한 주제에서 북마크한 단어만 모아 학습한다. */
+    fun openTopicBookmarks(topic: Topic) {
+        val current = topics.find { it.id == topic.id } ?: return
+        start("★ ${current.title}", current.studyCards().filter { it.card.bookmarked }, fromBookmarks = true)
+    }
+
+    /** 북마크한 단어가 있는 주제들과 그 개수. 목록 순서 그대로. */
+    val bookmarkedTopics: List<Pair<Topic, Int>>
+        get() = topics.mapNotNull { topic ->
+            val count = topic.cards.count { it.bookmarked }
+            if (count > 0) topic to count else null
+        }
 
     private fun bookmarkedCards(): List<StudyCard> =
         topics.flatMap { topic -> topic.studyCards().filter { it.card.bookmarked } }
 
-    private fun start(title: String, cards: List<StudyCard>) {
+    private fun start(title: String, cards: List<StudyCard>, fromBookmarks: Boolean) {
         if (cards.isEmpty()) return
         session = StudySession(title, cards)
         flipped = false
+        studyFromBookmarks = fromBookmarks
         screen = Screen.STUDY
     }
 

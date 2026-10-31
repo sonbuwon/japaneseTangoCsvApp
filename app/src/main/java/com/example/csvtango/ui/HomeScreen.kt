@@ -42,12 +42,9 @@ import com.example.csvtango.ui.theme.Sheet
 /** 앱 첫 화면. [암기]와 [시험] 중 하나를 고른다. */
 @Composable
 fun HomeScreen(
-    topicCount: Int,
     wordCount: Int,
-    bookmarkCount: Int,
     onMemorize: () -> Unit,
     onQuiz: () -> Unit,
-    onAdd: () -> Unit,
 ) {
     val hasWords = wordCount > 0
 
@@ -67,30 +64,25 @@ fun HomeScreen(
                 .windowInsetsPadding(WindowInsets.navigationBars),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(
-                Modifier.fillMaxWidth().padding(bottom = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("무엇을 할까요?", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Muted)
-                PrimaryButton("+ CSV 추가", onAdd)
-            }
+            Text(
+                "무엇을 할까요?",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Muted,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
 
             ModeCard(
                 glyph = "📚",
                 title = "암기",
-                detail = when {
-                    !hasWords -> "[+ CSV 추가]로 단어장을 만듭니다"
-                    bookmarkCount > 0 -> "주제 ${topicCount}개 · 단어 ${wordCount}개 · 북마크 ${bookmarkCount}개"
-                    else -> "주제 ${topicCount}개 · 단어 ${wordCount}개"
-                },
+                detail = if (hasWords) null else "암기 화면의 [+ csv]로 단어장을 만듭니다",
                 onClick = onMemorize,
             )
 
             ModeCard(
                 glyph = "✏️",
                 title = "시험",
-                detail = if (hasWords) null else "먼저 [+ CSV 추가]로 단어장을 추가해 주세요",
+                detail = if (hasWords) null else "먼저 암기 화면의 [+ csv]로 단어장을 추가해 주세요",
                 enabled = hasWords,
                 onClick = onQuiz,
                 badgeBackground = GoldSoft,

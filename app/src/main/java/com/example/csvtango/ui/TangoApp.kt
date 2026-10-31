@@ -24,12 +24,9 @@ fun TangoApp(vm: TangoViewModel = viewModel()) {
 
     when (vm.screen) {
         Screen.HOME -> HomeScreen(
-            topicCount = vm.topics.size,
             wordCount = vm.wordCount,
-            bookmarkCount = vm.bookmarkCount,
             onMemorize = vm::goMemorize,
             onQuiz = vm::goQuizMenu,
-            onAdd = vm::goUpload,
         )
 
         Screen.QUIZ_MENU -> QuizMenuScreen(
@@ -40,21 +37,39 @@ fun TangoApp(vm: TangoViewModel = viewModel()) {
         )
 
         Screen.MEMORIZE -> MemorizeScreen(
-            topics = vm.topics,
+            folders = vm.folders,
+            openFolder = vm.openFolder,
+            topicsIn = vm::topicsIn,
+            hasTopics = vm.topics.isNotEmpty(),
             bookmarkCount = vm.bookmarkCount,
-            onBack = vm::goHome,
+            onBack = vm::back,
             onOpenTopic = vm::openTopic,
-            onOpenBookmarks = vm::openBookmarks,
+            onOpenFolder = vm::enterFolder,
+            onOpenBookmarks = vm::goBookmarks,
             onClearBookmarks = vm::clearBookmarks,
             editing = vm.editing,
             onToggleEdit = { vm.editing = !vm.editing },
             onMove = vm::moveTopic,
             onRename = vm::renameTopic,
             onDelete = vm::deleteTopic,
+            onMoveToFolder = vm::moveTopicToFolder,
+            onCreateFolder = vm::createFolder,
+            onAddCsv = vm::goUpload,
+            onMoveFolder = vm::moveFolder,
+            onRenameFolder = vm::renameFolder,
+            onDeleteFolder = vm::deleteFolder,
+        )
+
+        Screen.BOOKMARKS -> BookmarkListScreen(
+            totalCount = vm.bookmarkCount,
+            topics = vm.bookmarkedTopics,
+            onBack = vm::back,
+            onOpenAll = vm::openBookmarks,
+            onOpenTopic = vm::openTopicBookmarks,
         )
 
         Screen.UPLOAD -> UploadScreen(
-            onBack = vm::goHome,
+            onBack = vm::goMemorize,
             onSave = vm::addTopic,
         )
 
@@ -63,7 +78,8 @@ fun TangoApp(vm: TangoViewModel = viewModel()) {
                 session = session,
                 flipped = vm.flipped,
                 speaker = speaker,
-                onBack = { speaker.stop(); vm.goMemorize() },
+                backLabel = if (vm.studyFromBookmarks) "‹ 북마크" else "‹ 주제",
+                onBack = { speaker.stop(); vm.back() },
                 onFlip = vm::flip,
                 onMove = vm::move,
                 onSeek = vm::jumpTo,

@@ -23,7 +23,32 @@ data class Topic(
     val title: String,
     val cards: List<Card>,
     val createdAt: Long,
+    /** 들어 있는 [Folder] 의 id. null 이면 폴더 밖(암기 화면 맨 위)에 있다. */
+    val folderId: String? = null,
 )
+
+/** 암기 화면에서 주제를 묶어 두는 폴더. */
+data class Folder(
+    val id: String,
+    val name: String,
+    val createdAt: Long,
+)
+
+/**
+ * [same] 이 참인 항목끼리만 순서를 매겨 [target] 을 한 칸 위(-1)나 아래(+1)로 옮긴다.
+ * 그 사이에 끼어 있는 다른 항목들은 자리를 지킨다. 옮길 수 없으면 그대로 돌려준다.
+ */
+fun <T> List<T>.moveAmong(target: T, delta: Int, same: (T) -> Boolean): List<T> {
+    val slots = indices.filter { same(this[it]) }
+    val from = slots.indexOf(indexOf(target))
+    val to = from + delta
+    if (from < 0 || to !in slots.indices) return this
+
+    return toMutableList().apply {
+        this[slots[from]] = this@moveAmong[slots[to]]
+        this[slots[to]] = target
+    }
+}
 
 /**
  * 학습 화면에서 쓰는 카드.

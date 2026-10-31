@@ -6,7 +6,7 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-/** 주제 목록을 기기에 저장한다. (웹 버전의 localStorage 자리) */
+/** 주제·폴더 목록을 기기에 저장한다. (웹 버전의 localStorage 자리) */
 class TopicStore(context: Context) {
 
     private val prefs = context.applicationContext
@@ -28,10 +28,39 @@ class TopicStore(context: Context) {
         prefs.edit { putString(KEY_TOPICS, array.toString()) }
     }
 
+    fun loadFolders(): List<Folder> {
+        val raw = prefs.getString(KEY_FOLDERS, null) ?: return emptyList()
+        return try {
+            val array = JSONArray(raw)
+            (0 until array.length()).mapNotNull { array.optJSONObject(it)?.toFolder() }
+        } catch (e: JSONException) {
+            emptyList()
+        }
+    }
+
+    fun saveFolders(folders: List<Folder>) {
+        val array = JSONArray()
+        folders.forEach { array.put(it.toJson()) }
+        prefs.edit { putString(KEY_FOLDERS, array.toString()) }
+    }
+
+    private fun Folder.toJson() = JSONObject().apply {
+        put("id", id)
+        put("name", name)
+        put("createdAt", createdAt)
+    }
+
+    private fun JSONObject.toFolder() = Folder(
+        id = optString("id"),
+        name = optString("name"),
+        createdAt = optLong("createdAt"),
+    )
+
     private fun Topic.toJson() = JSONObject().apply {
         put("id", id)
         put("title", title)
         put("createdAt", createdAt)
+        if (folderId != null) put("folderId", folderId)
         put("cards", JSONArray().apply { cards.forEach { put(it.toJson()) } })
     }
 
@@ -51,6 +80,7 @@ class TopicStore(context: Context) {
             id = optString("id"),
             title = optString("title"),
             createdAt = optLong("createdAt"),
+            folderId = optString("folderId").ifEmpty { null },
             cards = (0 until cardsJson.length()).mapNotNull { cardsJson.optJSONObject(it)?.toCard() },
         )
     }
@@ -68,5 +98,6 @@ class TopicStore(context: Context) {
     private companion object {
         const val PREFS = "jp-flashcards-v1"
         const val KEY_TOPICS = "topics"
+        const val KEY_FOLDERS = "folders"
     }
 }

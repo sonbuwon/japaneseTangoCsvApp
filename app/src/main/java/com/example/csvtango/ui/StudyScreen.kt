@@ -103,6 +103,7 @@ fun StudyScreen(
     session: StudySession,
     flipped: Boolean,
     speaker: JapaneseSpeaker,
+    backLabel: String = "‹ 주제",
     onBack: () -> Unit,
     onFlip: () -> Unit,
     onMove: (Int) -> Unit,
@@ -118,7 +119,7 @@ fun StudyScreen(
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().background(Paper)) {
         TopBar {
-            GhostButton("‹ 주제", onBack)
+            GhostButton(backLabel, onBack)
             Text(
                 session.title,
                 fontSize = 17.sp,
