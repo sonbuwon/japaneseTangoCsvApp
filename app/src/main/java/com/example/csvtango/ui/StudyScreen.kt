@@ -1,9 +1,6 @@
 package com.example.csvtango.ui
 
-import android.content.ActivityNotFoundException
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -529,8 +526,6 @@ private fun FrontFace(card: Card, speaker: JapaneseSpeaker, onToggleBookmark: ()
                     },
                 )
             }
-
-            Chip(text = "📖 네이버 사전", active = false, onClick = { context.openNaverDict(card.jp) })
         }
     }
 }
@@ -636,15 +631,6 @@ private fun wordSize(word: String) = when {
     word.length <= 8 -> 40.sp
     word.length <= 14 -> 30.sp
     else -> 24.sp
-}
-
-private fun Context.openNaverDict(word: String) {
-    val url = "https://ja.dict.naver.com/#/search?query=" + Uri.encode(word)
-    try {
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-    } catch (e: ActivityNotFoundException) {
-        Toast.makeText(this, "사전을 열 수 있는 앱이 없습니다.", Toast.LENGTH_SHORT).show()
-    }
 }
 
 private fun Context.toastNoVoice() {

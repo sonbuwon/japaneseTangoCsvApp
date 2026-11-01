@@ -47,15 +47,24 @@ import com.example.csvtango.ui.theme.Paper
 import com.example.csvtango.ui.theme.Sheet
 import com.example.csvtango.ui.theme.StarOff
 
-/** 시험 볼 목록(주제 또는 북마크) 하나와 옵션을 고르는 화면. */
+/**
+ * 시험 볼 목록(주제 또는 북마크) 하나와 옵션을 고르는 화면.
+ *
+ * 북마크를 고르면 그 아래에 북마크가 있는 주제들이 펼쳐지고, 여기서는 여러 주제를 함께 고를 수 있다.
+ * [selectedBookmarkTopics] 가 비어 있으면 모든 주제의 북마크를 뜻한다.
+ */
 @Composable
 fun QuizSetupScreen(
     topics: List<Topic>,
     bookmarkCount: Int,
+    bookmarkedTopics: List<Pair<Topic, Int>>,
     selectedSource: String?,
+    selectedBookmarkTopics: Set<String>,
     shuffle: Boolean,
     wordCount: Int,
     onSelect: (String) -> Unit,
+    onToggleBookmarkTopic: (String) -> Unit,
+    onAllBookmarkTopics: () -> Unit,
     onToggleShuffle: () -> Unit,
     onBack: () -> Unit,
     onNext: () -> Unit,
@@ -81,18 +90,70 @@ fun QuizSetupScreen(
                 )
             }
 
+            val bookmarkSelected = selectedSource == BOOKMARK_SOURCE && bookmarkCount > 0
+            val allBookmarkTopics = selectedBookmarkTopics.isEmpty()
+            val selectedBookmarkCount =
+                if (allBookmarkTopics) bookmarkCount
+                else bookmarkedTopics.filter { it.first.id in selectedBookmarkTopics }.sumOf { it.second }
+
             item {
                 val enabled = bookmarkCount > 0
                 SelectRow(
-                    checked = selectedSource == BOOKMARK_SOURCE && enabled,
+                    checked = bookmarkSelected,
                     enabled = enabled,
                     onClick = { onSelect(BOOKMARK_SOURCE) },
                     background = GoldBg,
                     border = GoldLine,
                     badge = { Badge("★", GoldBg, Gold) },
                     title = "북마크",
-                    subtitle = if (enabled) "단어 ${bookmarkCount}개" else "북마크한 단어가 없습니다",
+                    subtitle = when {
+                        !enabled -> "북마크한 단어가 없습니다"
+                        allBookmarkTopics -> "모든 주제 · 단어 ${bookmarkCount}개"
+                        else -> "주제 ${selectedBookmarkTopics.size}개 · 단어 ${selectedBookmarkCount}개"
+                    },
                 )
+            }
+
+            if (bookmarkSelected) {
+                item {
+                    Text(
+                        "북마크 주제 (여러 개 고를 수 있습니다)",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Muted,
+                        modifier = Modifier.padding(start = 24.dp, top = 4.dp),
+                    )
+                }
+
+                item {
+                    Box(Modifier.padding(start = 24.dp)) {
+                        SelectRow(
+                            checked = allBookmarkTopics,
+                            enabled = true,
+                            onClick = onAllBookmarkTopics,
+                            background = GoldBg,
+                            border = GoldLine,
+                            badge = { Badge("★", GoldBg, Gold) },
+                            title = "모든 주제",
+                            subtitle = "단어 ${bookmarkCount}개",
+                        )
+                    }
+                }
+
+                items(bookmarkedTopics, key = { "bookmark:" + it.first.id }) { (topic, count) ->
+                    Box(Modifier.padding(start = 24.dp)) {
+                        SelectRow(
+                            checked = topic.id in selectedBookmarkTopics,
+                            enabled = true,
+                            onClick = { onToggleBookmarkTopic(topic.id) },
+                            background = GoldBg,
+                            border = GoldLine,
+                            badge = { Badge(topic.title.trim().take(1).uppercase().ifEmpty { "語" }, GoldBg, Gold) },
+                            title = topic.title,
+                            subtitle = "북마크 ${count}개 / 단어 ${topic.cards.size}개",
+                        )
+                    }
+                }
             }
 
             items(topics, key = { it.id }) { topic ->

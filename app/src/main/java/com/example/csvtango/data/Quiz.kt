@@ -15,6 +15,10 @@ object Kana {
     /** `し / よん`, `1, 일` 처럼 여러 읽기를 나누는 구분자 */
     private val SEPARATORS = charArrayOf('/', ',', '、', '･', '・', '|')
 
+    /** `つく(る)` 처럼 생략해도 되는 부분을 감싸는 괄호 (반각·전각) */
+    private val PARENS = charArrayOf('(', ')', '（', '）')
+    private val PAREN_GROUP = Regex("[(（][^()（）]*[)）]")
+
     fun isKanji(c: Char): Boolean =
         c in '一'..'鿿' ||      // CJK 통합 한자
             c in '㐀'..'䶿' ||  // 확장 A
@@ -31,9 +35,16 @@ object Kana {
         for (c in text) append(if (c in 'ァ'..'ヶ') c - 0x60 else c)
     }
 
-    /** 비교용 형태: 앞뒤·중간 공백 제거, 가타카나 → 히라가나. */
+    /** 비교용 형태: 앞뒤·중간 공백과 괄호 기호 제거, 가타카나 → 히라가나. */
     fun normalize(text: String): String =
-        toHiragana(text).filterNot { it.isWhitespace() || it == '　' }
+        toHiragana(text).filterNot { it.isWhitespace() || it == '　' || it in PARENS }
+
+    /** `つく(る)` → `つく` 처럼 괄호로 감싼 부분을 통째로 뺀다. */
+    fun withoutParenGroups(text: String): String = text.replace(PAREN_GROUP, "")
+
+    /** 읽기 하나를 정답으로 받아 줄 정규화 형태들: 괄호만 뺀 것과 괄호 안까지 뺀 것. */
+    fun answerForms(reading: String): Set<String> =
+        setOf(normalize(reading), normalize(withoutParenGroups(reading)))
 
     /** 구분자로 나뉜 읽기들을 각각 돌려준다. 빈 것은 뺀다. */
     fun readings(text: String): List<String> =
@@ -54,10 +65,13 @@ data class QuizQuestion(val card: StudyCard) {
 
     val prompt: String get() = if (kind == PromptKind.JAPANESE) jp else ko
 
-    /** 정답으로 받아 주는 형태들(정규화된 것). 히라가나 열의 읽기 전부 + 단어 자체가 가나면 그것도. */
+    /**
+     * 정답으로 받아 주는 형태들(정규화된 것). 히라가나 열의 읽기 전부 + 단어 자체가 가나면 그것도.
+     * `つく(る)` 처럼 괄호가 있으면 `つくる` 와 `つく` 둘 다 받는다.
+     */
     val answers: Set<String> = buildSet {
-        Kana.readings(kana).forEach { add(Kana.normalize(it)) }
-        if (jp.none(Kana::isKanji) && jp.any(Kana::isKana)) add(Kana.normalize(jp))
+        Kana.readings(kana).forEach { addAll(Kana.answerForms(it)) }
+        if (jp.none(Kana::isKanji) && jp.any(Kana::isKana)) addAll(Kana.answerForms(jp))
         remove("")
     }
 

@@ -115,6 +115,8 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
 
     fun goQuizSetup() {
         quiz = null
+        // 북마크가 사라진 주제는 북마크 주제 선택에서 뺀다.
+        quizBookmarkTopics = quizBookmarkTopics intersect bookmarkedTopics.map { it.first.id }.toSet()
         // 고른 목록이 사라졌거나(주제 삭제·북마크 해제) 아직 없으면 첫 주제를 골라 둔다.
         if (quizWords().isEmpty()) quizSource = topics.firstOrNull()?.id
         screen = Screen.QUIZ_SETUP
@@ -125,9 +127,9 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
         val words = quizWords()
         if (words.isEmpty()) return
         quiz = null
-        if (quizRangeSource != quizSource || quizRange.last > words.lastIndex) {
+        if (quizRangeSource != quizSourceKey || quizRange.last > words.lastIndex) {
             quizRange = words.indices
-            quizRangeSource = quizSource
+            quizRangeSource = quizSourceKey
         }
         screen = Screen.QUIZ_RANGE
     }
@@ -308,8 +310,11 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
             if (count > 0) topic to count else null
         }
 
-    private fun bookmarkedCards(): List<StudyCard> =
-        topics.flatMap { topic -> topic.studyCards().filter { it.card.bookmarked } }
+    /** 북마크한 단어 전부. [topicIds] 를 주면 그 주제들의 북마크만. (빈 집합은 전체) */
+    private fun bookmarkedCards(topicIds: Set<String> = emptySet()): List<StudyCard> =
+        topics
+            .filter { topicIds.isEmpty() || it.id in topicIds }
+            .flatMap { topic -> topic.studyCards().filter { it.card.bookmarked } }
 
     private fun start(title: String, cards: List<StudyCard>, fromBookmarks: Boolean) {
         if (cards.isEmpty()) return
@@ -374,6 +379,10 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
     var quizSource by mutableStateOf<String?>(null)
         private set
 
+    /** 북마크 시험에 넣을 주제 id 들. 여러 개 고를 수 있고, 비어 있으면 모든 주제의 북마크. */
+    var quizBookmarkTopics by mutableStateOf<Set<String>>(emptySet())
+        private set
+
     var quizShuffle by mutableStateOf(true)
         private set
 
@@ -384,15 +393,22 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
     /** [quizRange] 를 정한 목록. 다른 목록을 고르면 범위를 전체로 되돌린다. */
     private var quizRangeSource: String? = null
 
-    /** 고른 목록의 이름. */
+    /** 목록 선택을 한 값으로 묶은 것. 북마크 주제 선택이 바뀌어도 다른 목록으로 본다. */
+    private val quizSourceKey: String
+        get() = quizSource + "|" + quizBookmarkTopics.sorted().joinToString(",")
+
+    /** 고른 목록의 이름. 북마크에서 주제를 골랐으면 그 주제 이름들을 쓴다. */
     val quizSourceTitle: String
-        get() = if (quizSource == BOOKMARK_SOURCE) BOOKMARK_TITLE
-        else topics.find { it.id == quizSource }?.title.orEmpty()
+        get() = when {
+            quizSource != BOOKMARK_SOURCE -> topics.find { it.id == quizSource }?.title.orEmpty()
+            quizBookmarkTopics.isEmpty() -> BOOKMARK_TITLE
+            else -> "★ " + topics.filter { it.id in quizBookmarkTopics }.joinToString(", ") { it.title }
+        }
 
     /** 고른 목록의 단어 전부(목록 순서 그대로). */
     fun quizWords(): List<StudyCard> = when (val source = quizSource) {
         null -> emptyList()
-        BOOKMARK_SOURCE -> bookmarkedCards()
+        BOOKMARK_SOURCE -> bookmarkedCards(quizBookmarkTopics)
         else -> topics.find { it.id == source }?.studyCards().orEmpty()
     }
 
@@ -403,6 +419,20 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
     fun selectQuizSource(source: String) {
         if (source == BOOKMARK_SOURCE && bookmarkCount == 0) return
         quizSource = source
+    }
+
+    /** 북마크 시험에 넣을 주제를 켜거나 끈다. 북마크가 없는 주제는 고를 수 없다. */
+    fun toggleQuizBookmarkTopic(topicId: String) {
+        if (bookmarkedTopics.none { it.first.id == topicId }) return
+        quizSource = BOOKMARK_SOURCE
+        quizBookmarkTopics =
+            if (topicId in quizBookmarkTopics) quizBookmarkTopics - topicId else quizBookmarkTopics + topicId
+    }
+
+    /** 북마크 시험을 모든 주제의 북마크로 되돌린다. */
+    fun selectAllQuizBookmarkTopics() {
+        quizSource = BOOKMARK_SOURCE
+        quizBookmarkTopics = emptySet()
     }
 
     fun toggleQuizShuffle() {

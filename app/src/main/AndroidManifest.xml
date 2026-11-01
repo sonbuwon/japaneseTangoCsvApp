@@ -2,12 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- 네이버 사전 열기(브라우저)와 일본어 읽어 주기(TTS 엔진)를 위한 패키지 조회 -->
+    <!-- 일본어 읽어 주기(TTS 엔진)를 위한 패키지 조회 -->
     <queries>
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="https" />
-        </intent>
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>

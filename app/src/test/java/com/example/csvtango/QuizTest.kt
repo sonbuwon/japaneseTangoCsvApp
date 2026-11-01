@@ -77,6 +77,36 @@ class QuizTest {
     }
 
     @Test
+    fun `괄호로 감싼 부분은 넣어도 빼도 정답이다`() {
+        val q = question("作る", "つく(る)", "만들다")
+
+        assertTrue(q.isCorrect("つくる"))
+        assertTrue(q.isCorrect("つく"))
+        assertTrue(q.isCorrect("つく(る)"))
+        assertTrue(q.isCorrect("つく（る）"))
+        assertFalse(q.isCorrect("つ"))
+        assertFalse(q.isCorrect("る"))
+    }
+
+    @Test
+    fun `전각 괄호와 여러 읽기에도 괄호 생략이 적용된다`() {
+        val q = question("お茶", "（お）ちゃ / おちゃ", "차")
+
+        assertTrue(q.isCorrect("おちゃ"))
+        assertTrue(q.isCorrect("ちゃ"))
+        assertFalse(q.isCorrect("お"))
+    }
+
+    @Test
+    fun `가나 단어 자체에 괄호가 있어도 생략한 답을 받는다`() {
+        val q = question("（お）かね", "", "돈")
+
+        assertEquals(PromptKind.MEANING, q.kind)
+        assertTrue(q.isCorrect("おかね"))
+        assertTrue(q.isCorrect("かね"))
+    }
+
+    @Test
     fun `정규화는 공백을 지우고 가타카나를 히라가나로 바꾼다`() {
         assertEquals("がっこう", Kana.normalize("ガッ コウ"))
         assertEquals("ぱん", Kana.toHiragana("パン"))
