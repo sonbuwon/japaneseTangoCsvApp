@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.csvtango.data.Folder
 import com.example.csvtango.data.Topic
 import com.example.csvtango.ui.theme.Accent
 import com.example.csvtango.ui.theme.FieldBg
@@ -49,7 +50,7 @@ import com.example.csvtango.ui.theme.StarOff
 /** 종합 시험 설정. 목록을 여러 개 고르고 문제 수를 적는다. 순서는 항상 무작위. */
 @Composable
 fun CombinedQuizScreen(
-    topics: List<Topic>,
+    topicGroups: List<Pair<Folder?, List<Topic>>>,
     bookmarkCount: Int,
     selected: Set<String>,
     countText: String,
@@ -142,15 +143,21 @@ fun CombinedQuizScreen(
                 )
             }
 
-            items(topics, key = { it.id }) { topic ->
-                SelectRow(
-                    checked = topic.id in selected,
-                    enabled = true,
-                    onClick = { onToggle(topic.id) },
-                    badge = { Badge(topic.title.trim().take(1).uppercase().ifEmpty { "語" }) },
-                    title = topic.title,
-                    subtitle = "단어 ${topic.cards.size}개",
-                )
+            val showFolders = topicGroups.any { it.first != null }
+            topicGroups.forEach { (folder, topics) ->
+                if (showFolders) {
+                    item(key = "folder:" + (folder?.id ?: "none")) { FolderDivider(folder?.name) }
+                }
+                items(topics, key = { it.id }) { topic ->
+                    SelectRow(
+                        checked = topic.id in selected,
+                        enabled = true,
+                        onClick = { onToggle(topic.id) },
+                        badge = { Badge(topic.title.trim().take(1).uppercase().ifEmpty { "語" }) },
+                        title = topic.title,
+                        subtitle = "단어 ${topic.cards.size}개",
+                    )
+                }
             }
         }
 

@@ -120,7 +120,7 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
         // 북마크가 사라진 주제는 북마크 주제 선택에서 뺀다.
         quizBookmarkTopics = quizBookmarkTopics intersect bookmarkedTopics.map { it.first.id }.toSet()
         // 고른 목록이 사라졌거나(주제 삭제·북마크 해제) 아직 없으면 첫 주제를 골라 둔다.
-        if (quizWords().isEmpty()) quizSource = topics.firstOrNull()?.id
+        if (quizWords().isEmpty()) quizSource = orderedTopics.firstOrNull()?.id
         screen = Screen.QUIZ_SETUP
     }
 
@@ -216,6 +216,15 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
 
     /** [folderId] 폴더(null 이면 폴더 밖)에 든 주제들. 목록 순서 그대로. */
     fun topicsIn(folderId: String?): List<Topic> = topics.filter { folderOf(it) == folderId }
+
+    /** 암기 화면에 보이는 순서: 폴더 순서대로 그 안의 주제, 그다음 폴더 밖 주제. */
+    val orderedTopics: List<Topic>
+        get() = folders.flatMap { topicsIn(it.id) } + topicsIn(null)
+
+    /** [orderedTopics] 를 폴더별로 묶은 것. 폴더 밖 주제는 null 폴더로, 빈 폴더는 뺀다. */
+    val topicGroups: List<Pair<Folder?, List<Topic>>>
+        get() = (folders.map<Folder, Pair<Folder?, List<Topic>>> { it to topicsIn(it.id) } + (null to topicsIn(null)))
+            .filter { it.second.isNotEmpty() }
 
     fun enterFolder(folder: Folder) {
         editing = false
@@ -320,16 +329,16 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
         start("★ ${current.title}", current.studyCards().filter { it.card.bookmarked }, fromBookmarks = true)
     }
 
-    /** 북마크한 단어가 있는 주제들과 그 개수. 목록 순서 그대로. */
+    /** 북마크한 단어가 있는 주제들과 그 개수. 암기 화면 순서대로. */
     val bookmarkedTopics: List<Pair<Topic, Int>>
-        get() = topics.mapNotNull { topic ->
+        get() = orderedTopics.mapNotNull { topic ->
             val count = topic.cards.count { it.bookmarked }
             if (count > 0) topic to count else null
         }
 
     /** 북마크한 단어 전부. [topicIds] 를 주면 그 주제들의 북마크만. (빈 집합은 전체) */
     private fun bookmarkedCards(topicIds: Set<String> = emptySet()): List<StudyCard> =
-        topics
+        orderedTopics
             .filter { topicIds.isEmpty() || it.id in topicIds }
             .flatMap { topic -> topic.studyCards().filter { it.card.bookmarked } }
 
@@ -419,7 +428,7 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
         get() = when {
             quizSource != BOOKMARK_SOURCE -> topics.find { it.id == quizSource }?.title.orEmpty()
             quizBookmarkTopics.isEmpty() -> BOOKMARK_TITLE
-            else -> "★ " + topics.filter { it.id in quizBookmarkTopics }.joinToString(", ") { it.title }
+            else -> "★ " + orderedTopics.filter { it.id in quizBookmarkTopics }.joinToString(", ") { it.title }
         }
 
     /** 고른 목록의 단어 전부(목록 순서 그대로). */
@@ -529,7 +538,7 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
 
     /** 고른 목록들의 단어를 모은 것. 같은 카드는 한 번만, 정답을 아는 카드만. */
     private fun combinedPool(): List<QuizQuestion> {
-        val fromTopics = topics.filter { it.id in combinedSources }.flatMap { it.studyCards() }
+        val fromTopics = orderedTopics.filter { it.id in combinedSources }.flatMap { it.studyCards() }
         val fromBookmarks = if (BOOKMARK_SOURCE in combinedSources) bookmarkedCards() else emptyList()
         return (fromTopics + fromBookmarks)
             .distinctBy { it.topicId to it.index }

@@ -22,7 +22,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -156,7 +155,6 @@ fun StudyScreen(
                 speaker = speaker,
                 onFlip = onFlip,
                 onSwipe = onMove,
-                onToggleBookmark = onToggleBookmark,
                 modifier = Modifier.weight(1f).padding(top = 6.dp),
             )
 
@@ -168,21 +166,27 @@ fun StudyScreen(
                 NavButton("다음 ›", Modifier.weight(1f)) { onMove(1) }
             }
 
-            Surface(
-                onClick = onShuffle,
-                shape = RoundedCornerShape(10.dp),
-                color = Paper,
-                border = BorderStroke(1.dp, Line),
-                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+            Row(
+                Modifier.fillMaxWidth().padding(top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text(
-                    "🔀 순서 섞기",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Muted,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 13.dp),
-                )
+                BookmarkButton(card.bookmarked, onToggleBookmark, Modifier.weight(1f))
+                Surface(
+                    onClick = onShuffle,
+                    shape = RoundedCornerShape(10.dp),
+                    color = Paper,
+                    border = BorderStroke(1.dp, Line),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        "🔀 순서 섞기",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Muted,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 13.dp),
+                    )
+                }
             }
         }
     }
@@ -383,7 +387,6 @@ private fun Flashcard(
     speaker: JapaneseSpeaker,
     onFlip: () -> Unit,
     onSwipe: (Int) -> Unit,
-    onToggleBookmark: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val rotation by animateFloatAsState(
@@ -459,7 +462,7 @@ private fun Flashcard(
         ) {
             // 절반을 넘어가면 뒷면을 보여 준다. (뒷면은 다시 뒤집어 글자가 거울처럼 보이지 않게 한다)
             if (rotation <= 90f) {
-                FrontFace(card, speaker, onToggleBookmark)
+                FrontFace(card, speaker)
             } else {
                 Box(Modifier.graphicsLayer { rotationY = 180f }) { BackFace(card) }
             }
@@ -469,20 +472,10 @@ private fun Flashcard(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FrontFace(card: Card, speaker: JapaneseSpeaker, onToggleBookmark: () -> Unit) {
+private fun FrontFace(card: Card, speaker: JapaneseSpeaker) {
     val context = LocalContext.current
 
-    Face(
-        hint = "눌러서 뒤집기 · 좌우로 밀어 넘기기",
-        // 앞면에 붙여 카드와 함께 넘어가게 한다.
-        overlay = {
-            BookmarkButton(
-                on = card.bookmarked,
-                onClick = onToggleBookmark,
-                modifier = Modifier.align(Alignment.TopEnd).padding(10.dp),
-            )
-        },
-    ) {
+    Face {
         Text(
             card.jp,
             fontSize = wordSize(card.jp),
@@ -532,7 +525,7 @@ private fun FrontFace(card: Card, speaker: JapaneseSpeaker, onToggleBookmark: ()
 
 @Composable
 private fun BackFace(card: Card) {
-    Face(hint = "카드를 눌러 되돌리기") {
+    Face {
         Text(
             card.kana.ifEmpty { "—" },
             fontSize = 34.sp,
@@ -561,13 +554,9 @@ private fun BackFace(card: Card) {
     }
 }
 
-/** 카드 한 면의 공통 배치: 가운데 정렬 + 내용이 길면 스크롤, 아래쪽에 안내 문구. */
+/** 카드 한 면의 공통 배치: 가운데 정렬 + 내용이 길면 스크롤. */
 @Composable
-private fun Face(
-    hint: String,
-    overlay: @Composable (BoxScope.() -> Unit)? = null,
-    content: @Composable ColumnScope.() -> Unit,
-) {
+private fun Face(content: @Composable ColumnScope.() -> Unit) {
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier
@@ -578,29 +567,25 @@ private fun Face(
             verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
             content = content,
         )
-        Text(
-            hint,
-            fontSize = 11.5.sp,
-            color = Muted,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp),
-        )
-        overlay?.invoke(this)
     }
 }
 
 @Composable
 private fun BookmarkButton(on: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .size(42.dp)
-            .clip(CircleShape)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(10.dp),
+        color = Paper,
+        border = BorderStroke(1.dp, if (on) Gold else Line),
+        modifier = modifier,
     ) {
         Text(
-            text = if (on) "★" else "☆",
-            fontSize = 23.sp,
-            color = if (on) Gold else StarOff,
+            if (on) "★ 북마크" else "☆ 북마크",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = if (on) Gold else Muted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 13.dp),
         )
     }
 }

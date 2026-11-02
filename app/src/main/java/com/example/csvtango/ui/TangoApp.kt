@@ -157,7 +157,7 @@ private fun Screens(vm: TangoViewModel, speaker: JapaneseSpeaker) {
         }
 
         Screen.QUIZ_SETUP -> QuizSetupScreen(
-            topics = vm.topics,
+            topicGroups = vm.topicGroups,
             bookmarkCount = vm.bookmarkCount,
             bookmarkedTopics = vm.bookmarkedTopics,
             selectedSource = vm.quizSource,
@@ -183,7 +183,7 @@ private fun Screens(vm: TangoViewModel, speaker: JapaneseSpeaker) {
         )
 
         Screen.COMBINED_SETUP -> CombinedQuizScreen(
-            topics = vm.topics,
+            topicGroups = vm.topicGroups,
             bookmarkCount = vm.bookmarkCount,
             selected = vm.combinedSources,
             countText = vm.combinedCountText,

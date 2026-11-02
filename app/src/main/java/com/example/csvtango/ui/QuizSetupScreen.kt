@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.csvtango.data.Folder
 import com.example.csvtango.data.Topic
 import com.example.csvtango.ui.theme.Accent
 import com.example.csvtango.ui.theme.AccentSoft
@@ -55,7 +56,7 @@ import com.example.csvtango.ui.theme.StarOff
  */
 @Composable
 fun QuizSetupScreen(
-    topics: List<Topic>,
+    topicGroups: List<Pair<Folder?, List<Topic>>>,
     bookmarkCount: Int,
     bookmarkedTopics: List<Pair<Topic, Int>>,
     selectedSource: String?,
@@ -156,15 +157,21 @@ fun QuizSetupScreen(
                 }
             }
 
-            items(topics, key = { it.id }) { topic ->
-                SelectRow(
-                    checked = topic.id == selectedSource,
-                    enabled = true,
-                    onClick = { onSelect(topic.id) },
-                    badge = { Badge(topic.title.trim().take(1).uppercase().ifEmpty { "語" }) },
-                    title = topic.title,
-                    subtitle = "단어 ${topic.cards.size}개",
-                )
+            val showFolders = topicGroups.any { it.first != null }
+            topicGroups.forEach { (folder, topics) ->
+                if (showFolders) {
+                    item(key = "folder:" + (folder?.id ?: "none")) { FolderDivider(folder?.name) }
+                }
+                items(topics, key = { it.id }) { topic ->
+                    SelectRow(
+                        checked = topic.id == selectedSource,
+                        enabled = true,
+                        onClick = { onSelect(topic.id) },
+                        badge = { Badge(topic.title.trim().take(1).uppercase().ifEmpty { "語" }) },
+                        title = topic.title,
+                        subtitle = "단어 ${topic.cards.size}개",
+                    )
+                }
             }
 
             item {
@@ -320,6 +327,25 @@ private fun CheckMark(checked: Boolean) {
         Box(contentAlignment = Alignment.Center) {
             if (checked) Text("✓", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Sheet)
         }
+    }
+}
+
+/** 주제 목록에서 폴더를 구분하는 연한 이름과 줄. [name] 이 null 이면 폴더 밖 주제. */
+@Composable
+internal fun FolderDivider(name: String?) {
+    Row(
+        Modifier.fillMaxWidth().padding(top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            if (name != null) "📁 $name" else "폴더 밖",
+            fontSize = 12.5.sp,
+            color = StarOff,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        HorizontalDivider(color = Line, modifier = Modifier.weight(1f))
     }
 }
 
