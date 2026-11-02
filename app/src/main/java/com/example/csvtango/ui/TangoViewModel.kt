@@ -156,12 +156,13 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun newId(): String = System.currentTimeMillis().toString() + Random.nextInt(0x100000).toString(16)
 
-    fun addTopic(title: String, cards: List<Card>) {
+    fun addTopic(title: String, cards: List<Card>, folderId: String? = null) {
         val topic = Topic(
             id = newId(),
             title = title,
             cards = cards,
             createdAt = System.currentTimeMillis(),
+            folderId = folderId?.takeIf { id -> folders.any { it.id == id } },
         )
         update(listOf(topic) + topics)
     }

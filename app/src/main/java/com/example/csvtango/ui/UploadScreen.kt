@@ -22,6 +22,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -44,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.csvtango.data.Card
 import com.example.csvtango.data.CsvParser
+import com.example.csvtango.data.Folder
 import com.example.csvtango.ui.theme.Accent
 import com.example.csvtango.ui.theme.ErrBg
 import com.example.csvtango.ui.theme.ErrInk
@@ -74,13 +77,16 @@ private data class Status(val message: String, val ok: Boolean)
 
 @Composable
 fun UploadScreen(
+    folders: List<Folder>,
     onBack: () -> Unit,
-    onSave: (String, List<Card>) -> Unit,
+    onSave: (String, List<Card>, String?) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     var title by remember { mutableStateOf("") }
+    /** 넣을 폴더의 id. null 이면 폴더 밖. */
+    var folderId by remember { mutableStateOf<String?>(null) }
     var fileUri by remember { mutableStateOf<Uri?>(null) }
     var fileName by remember { mutableStateOf("") }
     var status by remember { mutableStateOf<Status?>(null) }
@@ -115,7 +121,7 @@ fun UploadScreen(
                 )
 
                 else -> {
-                    onSave(name, cards)
+                    onSave(name, cards, folderId)
                     saved = true
                     Status("단어 ${cards.size}개를 불러왔습니다.", ok = true)
                 }
@@ -176,6 +182,11 @@ fun UploadScreen(
                     }
 
                     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text("폴더", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Muted)
+                        FolderPickerBox(folders, folderId) { folderId = it }
+                    }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                         Text("CSV 파일", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Muted)
                         FilePickerBox(fileName) { picker.launch(CSV_MIME_TYPES) }
                         Text(
@@ -222,6 +233,57 @@ private fun FilePickerBox(fileName: String, onClick: () -> Unit) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+        }
+    }
+}
+
+/** 새 주제를 넣을 폴더를 고르는 칸. 누르면 폴더 밖 + 폴더 목록이 펼쳐진다. */
+@Composable
+private fun FolderPickerBox(folders: List<Folder>, selectedId: String?, onSelect: (String?) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val selected = folders.find { it.id == selectedId }
+
+    Box(Modifier.fillMaxWidth()) {
+        Surface(
+            onClick = { expanded = true },
+            shape = RoundedCornerShape(10.dp),
+            color = FieldBg,
+            border = BorderStroke(1.dp, Line),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                Modifier.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(if (selected != null) "📁" else "🗂️", fontSize = 16.sp)
+                Text(
+                    text = selected?.name ?: "폴더 밖",
+                    fontSize = 14.sp,
+                    color = Ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Text("▾", fontSize = 14.sp, color = Muted)
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            containerColor = Sheet,
+        ) {
+            DropdownMenuItem(
+                text = { Text("🗂️  폴더 밖", color = Ink) },
+                onClick = { onSelect(null); expanded = false },
+            )
+            folders.forEach { folder ->
+                DropdownMenuItem(
+                    text = { Text("📁  ${folder.name}", color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    onClick = { onSelect(folder.id); expanded = false },
+                )
+            }
         }
     }
 }

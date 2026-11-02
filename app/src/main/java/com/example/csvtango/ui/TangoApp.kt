@@ -137,6 +137,7 @@ private fun Screens(vm: TangoViewModel, speaker: JapaneseSpeaker) {
         )
 
         Screen.UPLOAD -> UploadScreen(
+            folders = vm.folders,
             onBack = vm::goMemorize,
             onSave = vm::addTopic,
         )
