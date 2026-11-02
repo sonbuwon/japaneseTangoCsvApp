@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import com.example.csvtango.data.BookmarkMilestone
 import com.example.csvtango.data.Card
 import com.example.csvtango.data.Folder
 import com.example.csvtango.data.QuizQuestion
@@ -14,6 +15,7 @@ import com.example.csvtango.data.StudyCard
 import com.example.csvtango.data.StudySession
 import com.example.csvtango.data.Topic
 import com.example.csvtango.data.TopicStore
+import com.example.csvtango.data.isBookmarkMilestone
 import com.example.csvtango.data.moveAmong
 import kotlin.random.Random
 
@@ -264,6 +266,18 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
     fun isBookmarked(studyCard: StudyCard): Boolean =
         topics.find { it.id == studyCard.topicId }?.cards?.getOrNull(studyCard.index)?.bookmarked ?: false
 
+    /**
+     * 북마크가 늘어 전체 개수가 10개 단위에 닿았을 때 화면 아래에 잠깐 띄울 알림.
+     * 화면이 보여 준 뒤 [consumeBookmarkMilestone] 으로 지운다. 같은 개수에 다시 닿아도 새로 알린다.
+     */
+    var bookmarkMilestone by mutableStateOf<BookmarkMilestone?>(null)
+        private set
+
+    /** 알림 하나를 보여 준 뒤 호출. 다음 알림이 같은 개수여도 상태가 바뀌도록 비워 둔다. */
+    fun consumeBookmarkMilestone() {
+        bookmarkMilestone = null
+    }
+
     /** 원본 주제의 카드에 북마크를 켜거나 끈다. 주제가 사라졌으면 아무것도 하지 않는다. */
     private fun setBookmark(studyCard: StudyCard, on: Boolean) {
         val topic = topics.find { it.id == studyCard.topicId } ?: return
@@ -280,6 +294,9 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
                 )
             },
         )
+
+        // 켤 때만 센다. 끄거나 전체 해제할 때는 알리지 않는다.
+        if (on && isBookmarkMilestone(bookmarkCount)) bookmarkMilestone = BookmarkMilestone(bookmarkCount)
     }
 
     /* ---------------- 학습(암기) ---------------- */

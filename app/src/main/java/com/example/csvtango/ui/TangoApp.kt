@@ -1,10 +1,34 @@
 package com.example.csvtango.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.csvtango.speech.JapaneseSpeaker
 import com.example.csvtango.speech.rememberJapaneseSpeaker
+import com.example.csvtango.ui.theme.Gold
+import com.example.csvtango.ui.theme.Ink
+import com.example.csvtango.ui.theme.Sheet
+import kotlinx.coroutines.flow.filterNotNull
 
 @Composable
 fun TangoApp(vm: TangoViewModel = viewModel()) {
@@ -22,6 +46,50 @@ fun TangoApp(vm: TangoViewModel = viewModel()) {
         }
     }
 
+    // 북마크가 10, 20, 30… 개가 되면 화면 아래에 잠깐 떠 있다가 사라지는 알림을 띄운다.
+    // 알림 상태를 LaunchedEffect 의 키로 쓰면 비우는 순간 효과가 취소되어 스낵바가 뜨지 않으므로,
+    // 한 번만 시작하는 효과 안에서 snapshotFlow 로 상태를 지켜본다.
+    val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(Unit) {
+        snapshotFlow { vm.bookmarkMilestone }
+            .filterNotNull()
+            .collect { milestone ->
+                vm.consumeBookmarkMilestone()
+                snackbar.showSnackbar(
+                    message = "★ 북마크가 ${milestone.count}개가 되었습니다",
+                    duration = SnackbarDuration.Short,
+                )
+            }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        Screens(vm = vm, speaker = speaker)
+
+        SnackbarHost(
+            hostState = snackbar,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(horizontal = 16.dp, vertical = 24.dp),
+        ) { data ->
+            Snackbar(
+                containerColor = Ink,
+                contentColor = Sheet,
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Text(
+                    text = data.visuals.message,
+                    color = Gold,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun Screens(vm: TangoViewModel, speaker: JapaneseSpeaker) {
     when (vm.screen) {
         Screen.HOME -> HomeScreen(
             wordCount = vm.wordCount,

@@ -27,6 +27,12 @@ data class Topic(
     val folderId: String? = null,
 )
 
+/** 북마크를 하나 더 켜서 전체 개수가 [count] 가 됐을 때 알려 줄 내용. 10, 20, 30… 에 닿을 때마다 만들어진다. */
+data class BookmarkMilestone(val count: Int)
+
+/** 전체 북마크 개수가 10개 단위(10, 20, 30…)에 막 닿았는지. */
+fun isBookmarkMilestone(count: Int): Boolean = count > 0 && count % 10 == 0
+
 /** 암기 화면에서 주제를 묶어 두는 폴더. */
 data class Folder(
     val id: String,
