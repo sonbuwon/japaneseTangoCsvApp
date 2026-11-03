@@ -29,6 +29,7 @@ import com.example.csvtango.ui.theme.Gold
 import com.example.csvtango.ui.theme.Ink
 import com.example.csvtango.ui.theme.Sheet
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.withTimeoutOrNull
 
 @Composable
 fun TangoApp(vm: TangoViewModel = viewModel()) {
@@ -55,10 +56,13 @@ fun TangoApp(vm: TangoViewModel = viewModel()) {
             .filterNotNull()
             .collect { milestone ->
                 vm.consumeBookmarkMilestone()
-                snackbar.showSnackbar(
-                    message = "★ 북마크가 ${milestone.count}개가 되었습니다",
-                    duration = SnackbarDuration.Short,
-                )
+                // SnackbarDuration.Short 는 4초로 고정이라, 무기한으로 띄우고 2초 뒤 취소해서 닫는다.
+                withTimeoutOrNull(2_000) {
+                    snackbar.showSnackbar(
+                        message = "★ 북마크가 ${milestone.count}개가 되었습니다",
+                        duration = SnackbarDuration.Indefinite,
+                    )
+                }
             }
     }
 
