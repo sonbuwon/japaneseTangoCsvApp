@@ -35,6 +35,19 @@ object Kana {
         for (c in text) append(if (c in 'ァ'..'ヶ') c - 0x60 else c)
     }
 
+    /** 히라가나를 가타카나로 바꾼다. 글자 수는 그대로라 입력 표시 변환에도 쓸 수 있다. */
+    fun toKatakana(text: String): String = buildString(text.length) {
+        for (c in text) append(if (c in 'ぁ'..'ゖ') c + 0x60 else c)
+    }
+
+    private fun isHiragana(c: Char): Boolean = c in 'ぁ'..'ゟ'
+
+    private fun isKatakana(c: Char): Boolean = c in '゠'..'ヿ' || c in 'ｦ'..'ﾟ'
+
+    /** 한자·히라가나 없이 가타카나로만 적힌 단어인지. (コーヒー, パン・ケーキ 등) */
+    fun isKatakanaWord(text: String): Boolean =
+        text.none { isKanji(it) || isHiragana(it) } && text.any(::isKatakana)
+
     /** 비교용 형태: 앞뒤·중간 공백과 괄호 기호 제거, 가타카나 → 히라가나. */
     fun normalize(text: String): String =
         toHiragana(text).filterNot { it.isWhitespace() || it == '　' || it in PARENS }
@@ -64,6 +77,9 @@ data class QuizQuestion(val card: StudyCard) {
         else PromptKind.MEANING
 
     val prompt: String get() = if (kind == PromptKind.JAPANESE) jp else ko
+
+    /** 가타카나 단어면 답도 가타카나로 입력받는다. (채점은 히라가나와 똑같이 한다) */
+    val katakana: Boolean = Kana.isKatakanaWord(jp)
 
     /**
      * 정답으로 받아 주는 형태들(정규화된 것). 히라가나 열의 읽기 전부 + 단어 자체가 가나면 그것도.

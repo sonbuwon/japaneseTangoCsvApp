@@ -114,4 +114,29 @@ class QuizTest {
         assertFalse(Kana.isKanji('あ'))
         assertTrue(Kana.isKana('ー'))
     }
+
+    @Test
+    fun `가타카나 단어만 가타카나 입력으로 묻는다`() {
+        assertTrue(question("コーヒー", "こーひー", "커피").katakana)
+        assertTrue(question("パン・ケーキ", "ぱんけーき", "팬케이크").katakana)
+        assertFalse(question("ありがとう", "ありがとう", "고맙다").katakana)
+        assertFalse(question("学校", "がっこう", "학교").katakana)
+        assertFalse(question("ビール瓶", "びーるびん", "맥주병").katakana)
+        assertFalse(question("コピーする", "こぴーする", "복사하다").katakana)
+    }
+
+    @Test
+    fun `히라가나를 가타카나로 바꾸고 다른 글자는 그대로 둔다`() {
+        assertEquals("コーヒー", Kana.toKatakana("こーひー"))
+        assertEquals("ヴァイオリン", Kana.toKatakana("ゔぁいおりん"))
+        assertEquals("ガッコウ 学校", Kana.toKatakana("がっこう 学校"))
+        assertEquals("こーひー".length, Kana.toKatakana("こーひー").length)
+    }
+
+    @Test
+    fun `가타카나로 바꿔 제출한 답도 정답이다`() {
+        val q = question("コーヒー", "こーひー", "커피")
+
+        assertTrue(q.isCorrect(Kana.toKatakana("こーひー")))
+    }
 }

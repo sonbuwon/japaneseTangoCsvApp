@@ -42,7 +42,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import android.widget.Toast
 import androidx.compose.ui.graphics.Color
 import com.example.csvtango.data.Card
+import com.example.csvtango.data.Kana
 import com.example.csvtango.data.PromptKind
 import com.example.csvtango.data.QuizQuestion
 import com.example.csvtango.data.QuizResult
@@ -133,11 +139,20 @@ fun QuizScreen(
 
             val pending = session.pending
             PromptCard(session.current, revealed = pending != null)
-            AnswerField(index = session.index, locked = pending != null, onSubmit = onSubmit)
+            AnswerField(
+                index = session.index,
+                katakana = session.current.katakana,
+                locked = pending != null,
+                onSubmit = onSubmit,
+            )
 
             if (pending == null) {
                 Text(
-                    "히라가나로 입력한 뒤 확인을 누르세요. 가타카나로 입력해도 같은 답으로 봅니다.",
+                    if (session.current.katakana) {
+                        "가타카나 단어입니다. 입력한 가나는 가타카나로 바뀌어 보입니다. 입력한 뒤 확인을 누르세요."
+                    } else {
+                        "히라가나로 입력한 뒤 확인을 누르세요. 가타카나로 입력해도 같은 답으로 봅니다."
+                    },
                     fontSize = 12.5.sp,
                     lineHeight = 19.sp,
                     color = Muted,
@@ -181,9 +196,10 @@ private fun ProgressBar(position: Int, total: Int) {
 /** 문제 카드. 채점 전에는 문제만, 채점 뒤에는 질문 종류에 따른 안내만 살짝 바꾼다. */
 @Composable
 private fun PromptCard(question: QuizQuestion, revealed: Boolean) {
+    val script = if (question.katakana) "가타카나" else "히라가나"
     val label = when (question.kind) {
-        PromptKind.JAPANESE -> "이 단어의 히라가나는?"
-        PromptKind.MEANING -> "이 뜻에 맞는 히라가나는?"
+        PromptKind.JAPANESE -> "이 단어의 ${script}는?"
+        PromptKind.MEANING -> "이 뜻에 맞는 ${script}는?"
     }
 
     Surface(
@@ -214,12 +230,18 @@ private fun PromptCard(question: QuizQuestion, revealed: Boolean) {
     }
 }
 
-/** 답 입력란. 문제가 바뀌면 비우고 다시 포커스를 준다. */
+/**
+ * 답 입력란. 문제가 바뀌면 비우고 다시 포커스를 준다.
+ *
+ * 키보드에는 일본어 입력을 쓰도록 힌트를 준다. 안드로이드에는 키보드를 가타카나 모드로 바꾸는
+ * 표준 방법이 없으므로, [katakana] 문제에서는 입력한 히라가나를 가타카나로 바꿔 보여 주고
+ * 제출할 때도 가타카나로 바꿔 보낸다. (글자 수가 같아 IME 조합 중에도 커서가 어긋나지 않는다)
+ */
 @Composable
-private fun AnswerField(index: Int, locked: Boolean, onSubmit: (String) -> Unit) {
+private fun AnswerField(index: Int, katakana: Boolean, locked: Boolean, onSubmit: (String) -> Unit) {
     var input by remember(index) { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
-    val submit = { if (input.isNotBlank()) onSubmit(input) }
+    val submit = { if (input.isNotBlank()) onSubmit(if (katakana) Kana.toKatakana(input) else input) }
 
     LaunchedEffect(index) { focusRequester.requestFocus() }
 
@@ -231,12 +253,13 @@ private fun AnswerField(index: Int, locked: Boolean, onSubmit: (String) -> Unit)
         OutlinedTextField(
             value = input,
             onValueChange = { if (!locked) input = it },
-            placeholder = { Text("ひらがな", color = StarOff) },
+            placeholder = { Text(if (katakana) "カタカナ" else "ひらがな", color = StarOff) },
             singleLine = true,
             readOnly = locked,
             shape = RoundedCornerShape(12.dp),
             textStyle = TextStyle(fontSize = 20.sp, color = Ink),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = JapaneseLocale),
+            visualTransformation = if (katakana) KatakanaTransformation else VisualTransformation.None,
             keyboardActions = KeyboardActions(onDone = { submit() }),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Sheet,
@@ -265,6 +288,17 @@ private fun AnswerField(index: Int, locked: Boolean, onSubmit: (String) -> Unit)
             )
         }
     }
+}
+
+private val JapaneseLocale = LocaleList("ja-JP")
+
+/** 히라가나를 가타카나로 바꿔 보여 준다. 글자 수가 그대로라 오프셋은 1:1이다. */
+private object KatakanaTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText =
+        TransformedText(
+            AnnotatedString(Kana.toKatakana(text.text), text.spanStyles, text.paragraphStyles),
+            OffsetMapping.Identity,
+        )
 }
 
 /** 채점 결과. 정답이면 초록, 오답이면 빨강 바탕에 단어 전체를 보여 준다. */

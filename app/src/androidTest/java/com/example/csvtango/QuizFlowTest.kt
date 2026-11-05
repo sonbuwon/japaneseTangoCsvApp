@@ -75,8 +75,9 @@ class QuizFlowTest {
 
             // 2. 가나뿐인 단어: 한국어 뜻을 보여 준다. 틀리면 자동 북마크.
             compose.onNodeWithText("커피").assertIsDisplayed()
-            compose.onNodeWithText("이 뜻에 맞는 히라가나는?").assertIsDisplayed()
-            compose.onNodeWithText("ひらがな").performTextInput("こひ")
+            // 가타카나 단어라 가타카나 입력란이 나온다.
+            compose.onNodeWithText("이 뜻에 맞는 가타카나는?").assertIsDisplayed()
+            compose.onNodeWithText("カタカナ").performTextInput("こひ")
             compose.onNodeWithText("확인").performClick()
             compose.onNodeWithText("✕ 오답").assertIsDisplayed()
             compose.onNodeWithText("★ 북마크에 저장했습니다").assertIsDisplayed()
@@ -107,7 +108,7 @@ class QuizFlowTest {
             compose.onNodeWithText("○ 정답").assertIsDisplayed()
             compose.onNodeWithText("다음 ›").performClick()
 
-            compose.onNodeWithText("ひらがな").performTextInput("コーヒー")
+            compose.onNodeWithText("カタカナ").performTextInput("こーひー")
             compose.onNodeWithText("확인").performClick()
             compose.onNodeWithText("○ 정답").assertIsDisplayed()
             compose.onNodeWithText("결과 보기").performClick()
