@@ -65,7 +65,7 @@ fun CombinedQuizScreen(
 
     Column(Modifier.fillMaxSize().background(Paper).imePadding()) {
         TopBar {
-            GhostButton("‹ 시험", onBack)
+            BackButton(onBack)
             Text("종합 시험", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Ink)
         }
 

@@ -92,3 +92,11 @@ fun GhostButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier
         Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
 }
+
+/** 모든 화면 왼쪽 위의 뒤로 가기 버튼. 문구 없이 방향키 이모지 하나로 통일한다. */
+@Composable
+fun BackButton(onClick: () -> Unit) {
+    GhostButton(BACK_LABEL, onClick)
+}
+
+const val BACK_LABEL = "⬅️"

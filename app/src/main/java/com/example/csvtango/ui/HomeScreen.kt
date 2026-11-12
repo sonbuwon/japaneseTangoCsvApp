@@ -102,7 +102,7 @@ fun QuizMenuScreen(
 ) {
     Column(Modifier.fillMaxSize().background(Paper)) {
         TopBar {
-            GhostButton("‹ 홈", onBack)
+            BackButton(onBack)
             Text("시험", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Ink)
         }
 
@@ -114,18 +114,10 @@ fun QuizMenuScreen(
                 .windowInsetsPadding(WindowInsets.navigationBars),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                "어떤 시험을 볼까요?",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Muted,
-                modifier = Modifier.padding(bottom = 6.dp),
-            )
-
             ModeCard(
                 glyph = "✏️",
                 title = "주제 시험",
-                detail = "주제 하나를 골라 범위를 정해 출제 · 주제 ${topicCount}개",
+                detail = "주제 ${topicCount}개",
                 onClick = onTopicQuiz,
                 badgeBackground = GoldSoft,
                 badgeTint = Gold,

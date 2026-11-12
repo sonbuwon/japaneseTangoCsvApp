@@ -113,7 +113,7 @@ fun QuizScreen(
 
     Column(Modifier.fillMaxSize().background(Paper)) {
         TopBar {
-            GhostButton("‹ 그만", quit)
+            BackButton(quit)
             Text(
                 session.title,
                 fontSize = 17.sp,
@@ -481,7 +481,7 @@ private fun ResultView(
 
     Column(Modifier.fillMaxSize().background(Paper)) {
         TopBar {
-            GhostButton("‹ 홈", onHome)
+            BackButton(onHome)
             Text("시험 결과", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Ink)
         }
 

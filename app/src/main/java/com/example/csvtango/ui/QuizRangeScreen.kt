@@ -46,18 +46,28 @@ import com.example.csvtango.ui.theme.StarOff
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-/** 고른 목록의 단어를 보여 주고, 그중 몇 번부터 몇 번까지 낼지 정하는 화면. */
+/**
+ * 고른 목록의 단어를 보여 주고, 그중 몇 번부터 몇 번까지 낼지 정하는 화면.
+ *
+ * 목록을 여러 개 골랐으면 [step] 번째 목록(0부터, 전체 [stepCount] 개)을 보여 주고,
+ * 마지막 목록이 아니면 아래 버튼이 다음 목록으로 넘어간다. 마지막 목록에서 [totalQuestionCount] 문제로 시작한다.
+ */
 @Composable
 fun QuizRangeScreen(
     title: String,
     words: List<StudyCard>,
     range: IntRange,
     questionCount: Int,
+    step: Int,
+    stepCount: Int,
+    totalQuestionCount: Int,
     onRangeChange: (IntRange) -> Unit,
     onBack: () -> Unit,
+    onNext: () -> Unit,
     onStart: () -> Unit,
 ) {
     val whole = range.first == 0 && range.last == words.lastIndex
+    val last = step >= stepCount - 1
 
     /** 누른 단어 쪽으로 가까운 끝을 옮긴다. 범위 밖이면 그쪽 끝을, 안이면 더 가까운 끝을. */
     fun pick(i: Int) {
@@ -67,7 +77,18 @@ fun QuizRangeScreen(
 
     Column(Modifier.fillMaxSize().background(Paper)) {
         TopBar {
-            GhostButton("‹ 설정", onBack)
+            BackButton(onBack)
+            if (stepCount > 1) {
+                Text(
+                    "${step + 1}/${stepCount}",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Accent,
+                    modifier = Modifier
+                        .background(AccentSoft, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                )
+            }
             Text(
                 title,
                 fontSize = 17.sp,
@@ -125,18 +146,25 @@ fun QuizRangeScreen(
                     .padding(horizontal = 20.dp, vertical = 14.dp)
                     .windowInsetsPadding(WindowInsets.navigationBars),
             ) {
+                // 중간 목록은 이 범위에 문제가 없어도 넘어갈 수 있다. 시작은 모든 목록을 합쳐 한 문제라도 있어야 한다.
+                val enabled = !last || totalQuestionCount > 0
                 Surface(
-                    onClick = onStart,
-                    enabled = questionCount > 0,
+                    onClick = if (last) onStart else onNext,
+                    enabled = enabled,
                     shape = RoundedCornerShape(12.dp),
-                    color = if (questionCount > 0) Accent else Line,
+                    color = if (enabled) Accent else Line,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
-                        if (questionCount > 0) "시험 시작 · ${questionCount}문제" else "이 범위에는 낼 문제가 없습니다",
+                        when {
+                            !last -> "다음 목록 (${step + 2}/${stepCount}) · 이 범위 ${questionCount}문제"
+                            totalQuestionCount > 0 -> "시험 시작 · ${totalQuestionCount}문제"
+                            stepCount > 1 -> "고른 범위에는 낼 문제가 없습니다"
+                            else -> "이 범위에는 낼 문제가 없습니다"
+                        },
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (questionCount > 0) Sheet else Muted,
+                        color = if (enabled) Sheet else Muted,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 15.dp),
                     )

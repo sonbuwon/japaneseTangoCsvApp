@@ -138,7 +138,7 @@ fun UploadScreen(
 
     Column(Modifier.fillMaxSize().background(Paper)) {
         TopBar {
-            GhostButton("‹ 뒤로", onBack)
+            BackButton(onBack)
             Text("CSV 추가", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Ink)
         }
 

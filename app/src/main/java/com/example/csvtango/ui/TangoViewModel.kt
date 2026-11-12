@@ -34,10 +34,10 @@ enum class Screen {
     /** 시험: [주제 시험]·[종합 시험] 선택 */
     QUIZ_MENU,
 
-    /** 주제 시험: 목록(주제·북마크) 하나와 옵션 선택 */
+    /** 주제 시험: 목록(주제·북마크) 하나 이상과 옵션 선택. 폴더는 접고 펼 수 있다 */
     QUIZ_SETUP,
 
-    /** 시험: 고른 목록의 단어를 보여 주고 출제 범위를 정한다 */
+    /** 시험: 고른 목록을 하나씩 차례로 보여 주며 목록마다 출제 범위를 정한다 */
     QUIZ_RANGE,
 
     /** 종합 시험: 목록 여러 개와 문제 수를 고른다. 순서는 항상 무작위 */
@@ -49,6 +49,9 @@ const val BOOKMARK_TITLE = "★ 북마크"
 
 /** 시험 목록으로 북마크를 골랐을 때의 id. 주제 id 와 겹치지 않는다. */
 const val BOOKMARK_SOURCE = "__bookmarks__"
+
+/** 주제 시험 화면에서 폴더 밖 주제 묶음을 접고 펼 때 쓰는 키. 폴더 id 와 겹치지 않는다. */
+const val NO_FOLDER = "__no_folder__"
 
 class TangoViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -115,25 +118,44 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
         screen = Screen.QUIZ_MENU
     }
 
+    /** 시험 메뉴에서 [주제 시험]으로 들어온다. 고른 목록 없이, 폴더는 모두 접힌 채로 시작한다. */
+    fun startQuizSetup() {
+        quizSources = emptySet()
+        quizBookmarkTopics = emptySet()
+        quizExpandedFolders = emptySet()
+        goQuizSetup()
+    }
+
     fun goQuizSetup() {
         quiz = null
         // 북마크가 사라진 주제는 북마크 주제 선택에서 뺀다.
         quizBookmarkTopics = quizBookmarkTopics intersect bookmarkedTopics.map { it.first.id }.toSet()
-        // 고른 목록이 사라졌거나(주제 삭제·북마크 해제) 아직 없으면 첫 주제를 골라 둔다.
-        if (quizWords().isEmpty()) quizSource = orderedTopics.firstOrNull()?.id
+        // 지워진 주제, 비어 버린 북마크는 선택에서 뺀다.
+        val ids = topics.map { it.id }.toSet() + (if (bookmarkCount > 0) setOf(BOOKMARK_SOURCE) else emptySet())
+        quizSources = quizSources intersect ids
         screen = Screen.QUIZ_SETUP
     }
 
-    /** 고른 목록의 단어를 보여 주는 범위 지정 화면. 목록이 바뀌었으면 범위를 전체로 되돌린다. */
-    fun goQuizRange() {
-        val words = quizWords()
-        if (words.isEmpty()) return
+    /** 고른 목록 중 [step] 번째의 단어를 보여 주는 범위 지정 화면. 범위가 없거나 맞지 않으면 전체로 둔다. */
+    fun goQuizRange(step: Int = 0) {
+        val sources = orderedQuizSources
+        // 고른 목록이 모두 사라졌으면(주제 삭제·북마크가 모두 해제됨) 목록 선택으로 돌아간다.
+        if (sources.isEmpty()) return goQuizSetup()
+        val index = step.coerceIn(0, sources.lastIndex)
+        val words = quizWords(sources[index])
         quiz = null
-        if (quizRangeSource != quizSourceKey || quizRange.last > words.lastIndex) {
-            quizRange = words.indices
-            quizRangeSource = quizSourceKey
+        quizRangeStep = index
+        val key = quizSourceKey(sources[index])
+        val range = quizRanges[key]
+        if (words.isNotEmpty() && (range == null || range.last > words.lastIndex)) {
+            quizRanges = quizRanges + (key to words.indices)
         }
         screen = Screen.QUIZ_RANGE
+    }
+
+    /** 범위 화면의 [다음]. 마지막 목록이면 아무것도 하지 않는다. */
+    fun nextQuizRange() {
+        if (quizRangeStep < orderedQuizSources.lastIndex) goQuizRange(quizRangeStep + 1)
     }
 
     /** 뒤로 가기. 화면마다 한 단계 위로 올라간다. */
@@ -146,7 +168,7 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
             Screen.STUDY -> if (studyFromBookmarks) goBookmarks() else goMemorize()
             Screen.QUIZ_MENU -> goHome()
             Screen.QUIZ_SETUP -> goQuizMenu()
-            Screen.QUIZ_RANGE -> goQuizSetup()
+            Screen.QUIZ_RANGE -> if (quizRangeStep > 0) goQuizRange(quizRangeStep - 1) else goQuizSetup()
             Screen.COMBINED_SETUP -> goQuizMenu()
             Screen.QUIZ -> leaveQuiz()
         }
@@ -402,91 +424,135 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
     var quiz by mutableStateOf<QuizSession?>(null)
         private set
 
-    /** 시험 볼 목록. 주제 id 또는 [BOOKMARK_SOURCE]. 한 번에 하나만 고른다. */
-    var quizSource by mutableStateOf<String?>(null)
+    /** 시험 볼 목록들. 주제 id 또는 [BOOKMARK_SOURCE]. 여러 개 고를 수 있고, 처음엔 아무것도 고르지 않는다. */
+    var quizSources by mutableStateOf<Set<String>>(emptySet())
         private set
 
     /** 북마크 시험에 넣을 주제 id 들. 여러 개 고를 수 있고, 비어 있으면 모든 주제의 북마크. */
     var quizBookmarkTopics by mutableStateOf<Set<String>>(emptySet())
         private set
 
+    /** 주제 시험 화면에서 펼쳐 둔 폴더들. 폴더 밖 주제는 [NO_FOLDER]. 처음엔 모두 접혀 있다. */
+    var quizExpandedFolders by mutableStateOf<Set<String>>(emptySet())
+        private set
+
     var quizShuffle by mutableStateOf(true)
         private set
 
-    /** 목록 안에서 출제할 단어의 위치(0부터, 양끝 포함). */
-    var quizRange by mutableStateOf(0..0)
+    /** 목록별 출제 범위(0부터, 양끝 포함). 키는 [quizSourceKey]. */
+    private var quizRanges by mutableStateOf<Map<String, IntRange>>(emptyMap())
+
+    /** 범위 지정 화면에서 지금 보고 있는 목록의 순서(0부터). */
+    var quizRangeStep by mutableStateOf(0)
         private set
 
-    /** [quizRange] 를 정한 목록. 다른 목록을 고르면 범위를 전체로 되돌린다. */
-    private var quizRangeSource: String? = null
-
-    /** 목록 선택을 한 값으로 묶은 것. 북마크 주제 선택이 바뀌어도 다른 목록으로 본다. */
-    private val quizSourceKey: String
-        get() = quizSource + "|" + quizBookmarkTopics.sorted().joinToString(",")
-
-    /** 고른 목록의 이름. 북마크에서 주제를 골랐으면 그 주제 이름들을 쓴다. */
-    val quizSourceTitle: String
-        get() = when {
-            quizSource != BOOKMARK_SOURCE -> topics.find { it.id == quizSource }?.title.orEmpty()
-            quizBookmarkTopics.isEmpty() -> BOOKMARK_TITLE
-            else -> "★ " + orderedTopics.filter { it.id in quizBookmarkTopics }.joinToString(", ") { it.title }
+    /** 고른 목록들을 화면 순서(북마크 먼저, 그다음 폴더·주제 순)로. */
+    val orderedQuizSources: List<String>
+        get() = buildList {
+            if (BOOKMARK_SOURCE in quizSources && bookmarkCount > 0) add(BOOKMARK_SOURCE)
+            orderedTopics.forEach { if (it.id in quizSources) add(it.id) }
         }
 
-    /** 고른 목록의 단어 전부(목록 순서 그대로). */
-    fun quizWords(): List<StudyCard> = when (val source = quizSource) {
-        null -> emptyList()
-        BOOKMARK_SOURCE -> bookmarkedCards(quizBookmarkTopics)
+    /** 범위를 기억하는 키. 북마크는 고른 북마크 주제가 바뀌면 다른 목록으로 본다. */
+    private fun quizSourceKey(source: String): String =
+        if (source == BOOKMARK_SOURCE) source + "|" + quizBookmarkTopics.sorted().joinToString(",") else source
+
+    /** 목록 하나의 이름. 북마크에서 주제를 골랐으면 그 주제 이름들을 쓴다. */
+    fun quizSourceTitle(source: String): String = when {
+        source != BOOKMARK_SOURCE -> topics.find { it.id == source }?.title.orEmpty()
+        quizBookmarkTopics.isEmpty() -> BOOKMARK_TITLE
+        else -> "★ " + orderedTopics.filter { it.id in quizBookmarkTopics }.joinToString(", ") { it.title }
+    }
+
+    /** 목록 하나의 단어 전부(목록 순서 그대로). */
+    fun quizWords(source: String): List<StudyCard> = when (source) {
+        BOOKMARK_SOURCE -> if (BOOKMARK_SOURCE in quizSources) bookmarkedCards(quizBookmarkTopics) else emptyList()
         else -> topics.find { it.id == source }?.studyCards().orEmpty()
     }
 
-    /** 지금 범위로 낼 수 있는 문제 수. */
+    /** 고른 목록들의 단어 수 합. (같은 카드가 겹쳐도 목록마다 센다) */
+    val quizSelectedWordCount: Int
+        get() = orderedQuizSources.sumOf { quizWords(it).size }
+
+    /** 목록 하나의 지금 범위. 정한 적 없으면 전체. */
+    fun quizRange(source: String): IntRange =
+        quizRanges[quizSourceKey(source)] ?: quizWords(source).indices
+
+    /** 범위 화면에서 보고 있는 목록. */
+    val currentQuizSource: String?
+        get() = orderedQuizSources.getOrNull(quizRangeStep)
+
+    /** 목록 하나의 범위 안에서 낼 수 있는 문제 수. */
+    fun quizQuestionCount(source: String): Int = quizQuestions(source).size
+
+    /** 고른 목록 모두에서 낼 수 있는 문제 수. */
     val quizQuestionCount: Int
         get() = quizQuestions().size
 
-    fun selectQuizSource(source: String) {
+    /** 목록을 켜거나 끈다. 북마크가 없으면 북마크는 고를 수 없다. */
+    fun toggleQuizSource(source: String) {
         if (source == BOOKMARK_SOURCE && bookmarkCount == 0) return
-        quizSource = source
+        quizSources = if (source in quizSources) quizSources - source else quizSources + source
     }
 
     /** 북마크 시험에 넣을 주제를 켜거나 끈다. 북마크가 없는 주제는 고를 수 없다. */
     fun toggleQuizBookmarkTopic(topicId: String) {
         if (bookmarkedTopics.none { it.first.id == topicId }) return
-        quizSource = BOOKMARK_SOURCE
+        quizSources = quizSources + BOOKMARK_SOURCE
         quizBookmarkTopics =
             if (topicId in quizBookmarkTopics) quizBookmarkTopics - topicId else quizBookmarkTopics + topicId
     }
 
     /** 북마크 시험을 모든 주제의 북마크로 되돌린다. */
     fun selectAllQuizBookmarkTopics() {
-        quizSource = BOOKMARK_SOURCE
+        quizSources = quizSources + BOOKMARK_SOURCE
         quizBookmarkTopics = emptySet()
+    }
+
+    /** 주제 시험 화면에서 폴더를 접거나 편다. [folderId] 가 null 이면 폴더 밖 주제. */
+    fun toggleQuizFolder(folderId: String?) {
+        val key = folderId ?: NO_FOLDER
+        quizExpandedFolders = if (key in quizExpandedFolders) quizExpandedFolders - key else quizExpandedFolders + key
     }
 
     fun toggleQuizShuffle() {
         quizShuffle = !quizShuffle
     }
 
+    /** 범위 화면에서 보고 있는 목록의 범위를 바꾼다. */
     fun changeQuizRange(range: IntRange) {
-        val last = quizWords().lastIndex
+        val source = currentQuizSource ?: return
+        val last = quizWords(source).lastIndex
         if (last < 0) return
         val first = range.first.coerceIn(0, last)
-        quizRange = first..range.last.coerceIn(first, last)
+        quizRanges = quizRanges + (quizSourceKey(source) to first..range.last.coerceIn(first, last))
     }
 
-    /** 범위 안의 카드 중 정답을 아는 카드만. */
-    private fun quizQuestions(): List<QuizQuestion> =
-        quizWords()
-            .filterIndexed { i, _ -> i in quizRange }
+    /** 목록 하나의 범위 안 카드 중 정답을 아는 카드만. */
+    private fun quizQuestions(source: String): List<QuizQuestion> {
+        val range = quizRange(source)
+        return quizWords(source)
+            .filterIndexed { i, _ -> i in range }
             .map(::QuizQuestion)
             .filter { it.answerable }
+    }
+
+    /** 고른 목록 모두의 문제. 목록 순서대로 잇고, 같은 카드는 한 번만. */
+    private fun quizQuestions(): List<QuizQuestion> =
+        orderedQuizSources
+            .flatMap(::quizQuestions)
+            .distinctBy { it.card.topicId to it.card.index }
 
     fun startQuiz() {
         val questions = quizQuestions()
         if (questions.isEmpty()) return
 
-        val whole = quizRange.first == 0 && quizRange.last == quizWords().lastIndex
-        val title = if (whole) quizSourceTitle
-        else "$quizSourceTitle (${quizRange.first + 1}~${quizRange.last + 1})"
+        val title = orderedQuizSources.joinToString(" · ") { source ->
+            val range = quizRange(source)
+            val whole = range.first == 0 && range.last == quizWords(source).lastIndex
+            if (whole) quizSourceTitle(source)
+            else "${quizSourceTitle(source)} (${range.first + 1}~${range.last + 1})"
+        }
         quizCombined = false
         launchQuiz(title, questions)
     }
@@ -499,7 +565,7 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
 
     /** 시험을 그만두면 시험을 고른 화면으로 돌아간다. (일반: 범위 지정, 종합: 종합 시험 설정) */
     fun leaveQuiz() {
-        if (quizCombined) goCombinedSetup() else goQuizRange()
+        if (quizCombined) goCombinedSetup() else goQuizRange(quizRangeStep)
     }
 
     /** 결과 화면의 [시험 설정]. */

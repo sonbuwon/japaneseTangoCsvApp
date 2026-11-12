@@ -54,7 +54,8 @@ class QuizFlowTest {
             // 홈 → 시험
             compose.onNodeWithText("시험").performClick()
             compose.onNodeWithText("주제 시험").performClick()
-            compose.onNodeWithText("순서 섞기").performClick()   // 섞기 끄기
+            compose.onNodeWithText("테스트").performClick()      // 처음엔 아무 주제도 골라져 있지 않다
+            compose.onNodeWithText("무작위 여부").performClick()   // 섞기 끄기
             compose.onNodeWithText("단어 목록 보기 · 2개").performClick()
 
             // 단어 목록 → 범위(기본은 전체)
@@ -99,7 +100,8 @@ class QuizFlowTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.onNodeWithText("시험").performClick()
             compose.onNodeWithText("주제 시험").performClick()
-            compose.onNodeWithText("순서 섞기").performClick()
+            compose.onNodeWithText("테스트").performClick()      // 처음엔 아무 주제도 골라져 있지 않다
+            compose.onNodeWithText("무작위 여부").performClick()
             compose.onNodeWithText("단어 목록 보기 · 2개").performClick()
             compose.onNodeWithText("시험 시작 · 2문제").performClick()
 

@@ -15,6 +15,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -103,7 +104,7 @@ private fun Screens(vm: TangoViewModel, speaker: JapaneseSpeaker) {
 
         Screen.QUIZ_MENU -> QuizMenuScreen(
             topicCount = vm.topics.size,
-            onTopicQuiz = vm::goQuizSetup,
+            onTopicQuiz = vm::startQuizSetup,
             onCombinedQuiz = vm::goCombinedSetup,
             onBack = vm::goHome,
         )
@@ -151,7 +152,6 @@ private fun Screens(vm: TangoViewModel, speaker: JapaneseSpeaker) {
                 session = session,
                 flipped = vm.flipped,
                 speaker = speaker,
-                backLabel = if (vm.studyFromBookmarks) "‹ 북마크" else "‹ 주제",
                 onBack = { speaker.stop(); vm.back() },
                 onFlip = vm::flip,
                 onMove = vm::move,
@@ -165,27 +165,38 @@ private fun Screens(vm: TangoViewModel, speaker: JapaneseSpeaker) {
             topicGroups = vm.topicGroups,
             bookmarkCount = vm.bookmarkCount,
             bookmarkedTopics = vm.bookmarkedTopics,
-            selectedSource = vm.quizSource,
+            selectedSources = vm.quizSources,
             selectedBookmarkTopics = vm.quizBookmarkTopics,
+            expandedFolders = vm.quizExpandedFolders,
             shuffle = vm.quizShuffle,
-            wordCount = vm.quizWords().size,
-            onSelect = vm::selectQuizSource,
+            wordCount = vm.quizSelectedWordCount,
+            onToggle = vm::toggleQuizSource,
             onToggleBookmarkTopic = vm::toggleQuizBookmarkTopic,
             onAllBookmarkTopics = vm::selectAllQuizBookmarkTopics,
+            onToggleFolder = vm::toggleQuizFolder,
             onToggleShuffle = vm::toggleQuizShuffle,
             onBack = vm::goQuizMenu,
-            onNext = vm::goQuizRange,
+            onNext = { vm.goQuizRange(0) },
         )
 
-        Screen.QUIZ_RANGE -> QuizRangeScreen(
-            title = vm.quizSourceTitle,
-            words = vm.quizWords(),
-            range = vm.quizRange,
-            questionCount = vm.quizQuestionCount,
-            onRangeChange = vm::changeQuizRange,
-            onBack = vm::goQuizSetup,
-            onStart = vm::startQuiz,
-        )
+        Screen.QUIZ_RANGE -> vm.currentQuizSource?.let { source ->
+            // 목록이 바뀌면 단어 목록 스크롤을 처음부터 보여 준다.
+            key(vm.quizRangeStep) {
+                QuizRangeScreen(
+                    title = vm.quizSourceTitle(source),
+                    words = vm.quizWords(source),
+                    range = vm.quizRange(source),
+                    questionCount = vm.quizQuestionCount(source),
+                    step = vm.quizRangeStep,
+                    stepCount = vm.orderedQuizSources.size,
+                    totalQuestionCount = vm.quizQuestionCount,
+                    onRangeChange = vm::changeQuizRange,
+                    onBack = vm::back,
+                    onNext = vm::nextQuizRange,
+                    onStart = vm::startQuiz,
+                )
+            }
+        }
 
         Screen.COMBINED_SETUP -> CombinedQuizScreen(
             topicGroups = vm.topicGroups,

@@ -49,30 +49,33 @@ import com.example.csvtango.ui.theme.Sheet
 import com.example.csvtango.ui.theme.StarOff
 
 /**
- * 시험 볼 목록(주제 또는 북마크) 하나와 옵션을 고르는 화면.
+ * 시험 볼 목록(주제·북마크)을 하나 이상 고르고 옵션을 정하는 화면. 처음엔 아무것도 고르지 않은 상태.
  *
  * 북마크를 고르면 그 아래에 북마크가 있는 주제들이 펼쳐지고, 여기서는 여러 주제를 함께 고를 수 있다.
  * [selectedBookmarkTopics] 가 비어 있으면 모든 주제의 북마크를 뜻한다.
+ * 폴더별 묶음은 머리줄을 눌러 접고 펼 수 있고, [expandedFolders] 에 없는 폴더는 접혀 있다.
  */
 @Composable
 fun QuizSetupScreen(
     topicGroups: List<Pair<Folder?, List<Topic>>>,
     bookmarkCount: Int,
     bookmarkedTopics: List<Pair<Topic, Int>>,
-    selectedSource: String?,
+    selectedSources: Set<String>,
     selectedBookmarkTopics: Set<String>,
+    expandedFolders: Set<String>,
     shuffle: Boolean,
     wordCount: Int,
-    onSelect: (String) -> Unit,
+    onToggle: (String) -> Unit,
     onToggleBookmarkTopic: (String) -> Unit,
     onAllBookmarkTopics: () -> Unit,
+    onToggleFolder: (String?) -> Unit,
     onToggleShuffle: () -> Unit,
     onBack: () -> Unit,
     onNext: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().background(Paper)) {
         TopBar {
-            GhostButton("‹ 시험", onBack)
+            BackButton(onBack)
             Text("주제 시험", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Ink)
         }
 
@@ -82,16 +85,40 @@ fun QuizSetupScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
-                Text(
-                    "시험 볼 목록 (하나만 고릅니다)",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Muted,
-                    modifier = Modifier.padding(bottom = 6.dp),
-                )
+                Surface(
+                    onClick = onToggleShuffle,
+                    shape = RoundedCornerShape(16.dp),
+                    color = Sheet,
+                    border = BorderStroke(1.dp, Line),
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        Text(
+                            "무작위 여부",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Ink,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Switch(
+                            checked = shuffle,
+                            onCheckedChange = { onToggleShuffle() },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Sheet,
+                                checkedTrackColor = Accent,
+                                uncheckedThumbColor = Sheet,
+                                uncheckedTrackColor = StarOff,
+                                uncheckedBorderColor = StarOff,
+                            ),
+                        )
+                    }
+                }
             }
 
-            val bookmarkSelected = selectedSource == BOOKMARK_SOURCE && bookmarkCount > 0
+            val bookmarkSelected = BOOKMARK_SOURCE in selectedSources && bookmarkCount > 0
             val allBookmarkTopics = selectedBookmarkTopics.isEmpty()
             val selectedBookmarkCount =
                 if (allBookmarkTopics) bookmarkCount
@@ -102,7 +129,7 @@ fun QuizSetupScreen(
                 SelectRow(
                     checked = bookmarkSelected,
                     enabled = enabled,
-                    onClick = { onSelect(BOOKMARK_SOURCE) },
+                    onClick = { onToggle(BOOKMARK_SOURCE) },
                     background = GoldBg,
                     border = GoldLine,
                     badge = { Badge("★", GoldBg, Gold) },
@@ -159,76 +186,28 @@ fun QuizSetupScreen(
 
             val showFolders = topicGroups.any { it.first != null }
             topicGroups.forEach { (folder, topics) ->
+                val expanded = !showFolders || (folder?.id ?: NO_FOLDER) in expandedFolders
                 if (showFolders) {
-                    item(key = "folder:" + (folder?.id ?: "none")) { FolderDivider(folder?.name) }
+                    item(key = "folder:" + (folder?.id ?: "none")) {
+                        FolderHeader(
+                            name = folder?.name,
+                            expanded = expanded,
+                            topicCount = topics.size,
+                            selectedCount = topics.count { it.id in selectedSources },
+                            onClick = { onToggleFolder(folder?.id) },
+                        )
+                    }
                 }
-                items(topics, key = { it.id }) { topic ->
+                if (expanded) items(topics, key = { it.id }) { topic ->
                     SelectRow(
-                        checked = topic.id == selectedSource,
+                        checked = topic.id in selectedSources,
                         enabled = true,
-                        onClick = { onSelect(topic.id) },
+                        onClick = { onToggle(topic.id) },
                         badge = { Badge(topic.title.trim().take(1).uppercase().ifEmpty { "語" }) },
                         title = topic.title,
                         subtitle = "단어 ${topic.cards.size}개",
                     )
                 }
-            }
-
-            item {
-                Text(
-                    "옵션",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Muted,
-                    modifier = Modifier.padding(top = 18.dp, bottom = 6.dp),
-                )
-            }
-
-            item {
-                Surface(
-                    onClick = onToggleShuffle,
-                    shape = RoundedCornerShape(16.dp),
-                    color = Sheet,
-                    border = BorderStroke(1.dp, Line),
-                ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text("순서 섞기", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Ink)
-                            Text(
-                                "문제를 무작위 순서로 냅니다",
-                                fontSize = 12.5.sp,
-                                color = Muted,
-                                modifier = Modifier.padding(top = 3.dp),
-                            )
-                        }
-                        Switch(
-                            checked = shuffle,
-                            onCheckedChange = { onToggleShuffle() },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Sheet,
-                                checkedTrackColor = Accent,
-                                uncheckedThumbColor = Sheet,
-                                uncheckedTrackColor = StarOff,
-                                uncheckedBorderColor = StarOff,
-                            ),
-                        )
-                    }
-                }
-            }
-
-            item {
-                Text(
-                    "한자가 있는 단어는 일본어를, 히라가나·가타카나뿐인 단어는 한국어 뜻을 보여 줍니다. " +
-                        "틀린 단어는 북마크에 자동으로 저장되고, 맞힌 단어는 북마크에서 해제됩니다.",
-                    fontSize = 12.5.sp,
-                    lineHeight = 19.sp,
-                    color = Muted,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
             }
         }
 
@@ -241,7 +220,11 @@ fun QuizSetupScreen(
                     .windowInsetsPadding(WindowInsets.navigationBars),
             ) {
                 StartButton(
-                    text = if (wordCount > 0) "단어 목록 보기 · ${wordCount}개" else "시험 볼 목록을 골라 주세요",
+                    text = when {
+                        wordCount <= 0 -> "시험 볼 목록을 골라 주세요"
+                        selectedSources.size > 1 -> "범위 정하기 · 목록 ${selectedSources.size}개 · ${wordCount}개"
+                        else -> "단어 목록 보기 · ${wordCount}개"
+                    },
                     enabled = wordCount > 0,
                     onClick = onNext,
                 )
@@ -326,6 +309,43 @@ private fun CheckMark(checked: Boolean) {
     ) {
         Box(contentAlignment = Alignment.Center) {
             if (checked) Text("✓", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Sheet)
+        }
+    }
+}
+
+/**
+ * 주제 시험 화면에서 폴더를 구분하는 줄. 누르면 그 폴더의 주제를 접거나 편다.
+ * 접혀 있을 때도 고른 주제 수를 보여 줘서 접힌 폴더 안의 선택을 알 수 있게 한다.
+ */
+@Composable
+private fun FolderHeader(
+    name: String?,
+    expanded: Boolean,
+    topicCount: Int,
+    selectedCount: Int,
+    onClick: () -> Unit,
+) {
+    Surface(onClick = onClick, color = Color.Transparent, modifier = Modifier.padding(top = 8.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                (if (expanded) "▾ " else "▸ ") + (if (name != null) "📁 $name" else "폴더 밖"),
+                fontSize = 13.sp,
+                color = Muted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            Text(
+                if (selectedCount > 0) "${selectedCount}/${topicCount} 선택" else "주제 ${topicCount}개",
+                fontSize = 12.sp,
+                fontWeight = if (selectedCount > 0) FontWeight.SemiBold else FontWeight.Normal,
+                color = if (selectedCount > 0) Accent else StarOff,
+            )
+            HorizontalDivider(color = Line, modifier = Modifier.weight(1f))
         }
     }
 }

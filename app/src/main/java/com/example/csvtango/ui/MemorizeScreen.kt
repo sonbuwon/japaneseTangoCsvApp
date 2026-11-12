@@ -109,13 +109,13 @@ fun MemorizeScreen(
     Column(Modifier.fillMaxSize().background(Paper)) {
         TopBar {
             if (openFolder == null) {
-                GhostButton("‹ 홈", onBack)
+                BackButton(onBack)
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("암기", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Ink)
                     Text("単語カード", fontSize = 12.sp, color = Muted)
                 }
             } else {
-                GhostButton("‹ 암기", onBack)
+                BackButton(onBack)
                 Text(
                     "📁 ${openFolder.name}",
                     fontSize = 17.sp,

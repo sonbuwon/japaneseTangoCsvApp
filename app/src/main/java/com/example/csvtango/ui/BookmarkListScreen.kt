@@ -51,7 +51,7 @@ fun BookmarkListScreen(
 ) {
     Column(Modifier.fillMaxSize().background(Paper)) {
         TopBar {
-            GhostButton("‹ 암기", onBack)
+            BackButton(onBack)
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("북마크", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Ink)
                 Text("ブックマーク", fontSize = 12.sp, color = Muted)
