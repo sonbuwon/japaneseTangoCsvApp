@@ -100,3 +100,11 @@ fun BackButton(onClick: () -> Unit) {
 }
 
 const val BACK_LABEL = "⬅️"
+
+/** 상단 바 오른쪽 끝에 두는 홈 화면 이동 버튼. */
+@Composable
+fun HomeButton(onClick: () -> Unit) {
+    GhostButton(HOME_LABEL, onClick)
+}
+
+const val HOME_LABEL = "🏠"

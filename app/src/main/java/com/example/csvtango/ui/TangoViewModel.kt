@@ -537,11 +537,11 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
             .filter { it.answerable }
     }
 
-    /** 고른 목록 모두의 문제. 목록 순서대로 잇고, 같은 카드는 한 번만. */
+    /** 고른 목록 모두의 문제. 목록 순서대로 잇고, 여러 주제에 겹치는 단어는 처음 나온 것 하나만. */
     private fun quizQuestions(): List<QuizQuestion> =
         orderedQuizSources
             .flatMap(::quizQuestions)
-            .distinctBy { it.card.topicId to it.card.index }
+            .distinctBy { it.wordKey }
 
     fun startQuiz() {
         val questions = quizQuestions()
@@ -603,14 +603,14 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
         combinedCountText = text.filter(Char::isDigit).take(4)
     }
 
-    /** 고른 목록들의 단어를 모은 것. 같은 카드는 한 번만, 정답을 아는 카드만. */
+    /** 고른 목록들의 단어를 모은 것. 여러 주제에 겹치는 단어는 하나만, 정답을 아는 카드만. */
     private fun combinedPool(): List<QuizQuestion> {
         val fromTopics = orderedTopics.filter { it.id in combinedSources }.flatMap { it.studyCards() }
         val fromBookmarks = if (BOOKMARK_SOURCE in combinedSources) bookmarkedCards() else emptyList()
         return (fromTopics + fromBookmarks)
-            .distinctBy { it.topicId to it.index }
             .map(::QuizQuestion)
             .filter { it.answerable }
+            .distinctBy { it.wordKey }
     }
 
     /** 고른 목록들에서 낼 수 있는 최대 문제 수. */

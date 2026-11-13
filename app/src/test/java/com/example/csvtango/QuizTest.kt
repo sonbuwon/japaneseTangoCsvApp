@@ -16,6 +16,16 @@ class QuizTest {
         QuizQuestion(StudyCard(Card(jp = jp, kana = kana, ko = ko), topicId = "t", index = 0))
 
     @Test
+    fun `다른 주제의 같은 단어는 wordKey 가 같다`() {
+        val a = QuizQuestion(StudyCard(Card("学校", "がっこう", "학교"), topicId = "a", index = 0))
+        val b = QuizQuestion(StudyCard(Card(" 学校 ", "ガッコウ", "학교(뜻 다름)"), topicId = "b", index = 7))
+        val c = QuizQuestion(StudyCard(Card("学校", "がくこう", "학교"), topicId = "b", index = 8))
+
+        assertEquals(a.wordKey, b.wordKey)
+        assertEquals(listOf(a, c), listOf(a, b, c).distinctBy { it.wordKey })
+    }
+
+    @Test
     fun `한자 단어는 일본어를 보여 주고 히라가나를 정답으로 받는다`() {
         val q = question("学校", "がっこう", "학교")
 

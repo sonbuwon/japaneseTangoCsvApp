@@ -116,6 +116,7 @@ private fun Screens(vm: TangoViewModel, speaker: JapaneseSpeaker) {
             hasTopics = vm.topics.isNotEmpty(),
             bookmarkCount = vm.bookmarkCount,
             onBack = vm::back,
+            onHome = vm::goHome,
             onOpenTopic = vm::openTopic,
             onOpenFolder = vm::enterFolder,
             onOpenBookmarks = vm::goBookmarks,

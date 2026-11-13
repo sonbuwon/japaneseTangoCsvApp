@@ -94,6 +94,10 @@ data class QuizQuestion(val card: StudyCard) {
     /** 정답을 하나도 모르는 카드는 낼 수 없다. */
     val answerable: Boolean get() = answers.isNotEmpty()
 
+    /** 같은 단어인지 가리는 키. 일본어(공백 무시)와 히라가나(정규화)가 같으면 다른 주제의 카드라도 같은 단어로 본다. */
+    val wordKey: Pair<String, String>
+        get() = jp.filterNot { it.isWhitespace() || it == '　' } to Kana.normalize(kana)
+
     fun isCorrect(input: String): Boolean {
         val normalized = Kana.normalize(input)
         return normalized.isNotEmpty() && normalized in answers

@@ -78,6 +78,7 @@ fun MemorizeScreen(
     hasTopics: Boolean,
     bookmarkCount: Int,
     onBack: () -> Unit,
+    onHome: () -> Unit,
     onOpenTopic: (Topic) -> Unit,
     onOpenFolder: (Folder) -> Unit,
     onOpenBookmarks: () -> Unit,
@@ -110,7 +111,11 @@ fun MemorizeScreen(
         TopBar {
             if (openFolder == null) {
                 BackButton(onBack)
-                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    Modifier.weight(1f),
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Text("암기", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Ink)
                     Text("単語カード", fontSize = 12.sp, color = Muted)
                 }
@@ -123,7 +128,9 @@ fun MemorizeScreen(
                     color = Ink,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
+                HomeButton(onHome)
             }
         }
 

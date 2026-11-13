@@ -562,13 +562,12 @@ private fun WrongRow(result: QuizResult, bookmarked: Boolean, onToggleBookmark: 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
-                Text(card.jp, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Ink)
-                Text(card.kana, fontSize = 13.sp, color = Ink.copy(alpha = .75f))
-            }
-            Text(card.ko, fontSize = 12.5.sp, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("입력: ${result.input.trim()}", fontSize = 12.sp, color = ErrInk.copy(alpha = .8f))
+        // 한자 · 히라가나 · 뜻 · 입력을 각각 한 줄씩 보여 준다.
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(card.jp, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = Ink)
+            Text(card.kana, fontSize = 17.sp, color = Ink.copy(alpha = .75f))
+            Text(card.ko, fontSize = 16.sp, color = Muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text("입력: ${result.input.trim()}", fontSize = 15.sp, color = ErrInk.copy(alpha = .8f))
         }
         // 누를 때마다 북마크를 켜고 끈다.
         Surface(
