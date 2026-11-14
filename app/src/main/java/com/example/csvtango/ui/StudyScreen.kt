@@ -59,6 +59,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -84,6 +86,10 @@ import com.example.csvtango.data.StudySession
 import com.example.csvtango.speech.JapaneseSpeaker
 import com.example.csvtango.speech.SpeechTarget
 import com.example.csvtango.speech.firstReading
+import com.example.csvtango.ui.theme.KnobRing
+import com.example.csvtango.ui.theme.Marker
+import com.example.csvtango.ui.theme.Scrim
+import com.example.csvtango.ui.theme.OnAccent
 import com.example.csvtango.ui.theme.Accent
 import com.example.csvtango.ui.theme.AccentSoft
 import com.example.csvtango.ui.theme.FieldBg
@@ -237,7 +243,7 @@ fun StudyScreen(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = .35f))
+                .background(Scrim)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -422,8 +428,13 @@ private fun Progress(position: Int, total: Int, bookmarks: Int, onSeek: (Int) ->
                         IntOffset(x.coerceIn(0f, (barWidth - knobPx).coerceAtLeast(0f)).roundToInt(), 0)
                     }
                     .size(knobSize)
+                    // 끄는 동안: 흰 테두리 + 회청색 포커스 링
+                    .drawBehind {
+                        if (dragging) drawCircle(KnobRing, radius = size.minDimension / 2 + 5.dp.toPx())
+                    }
                     .clip(CircleShape)
-                    .background(Accent),
+                    .background(Marker)
+                    .then(if (dragging) Modifier.border(2.dp, Color.White, CircleShape) else Modifier),
             )
         }
     }
@@ -709,7 +720,7 @@ private fun StudyRangeBar(
                         if (enabled) "시험 시작 · ${questionCount}문제" else "낼 문제가 없습니다",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (enabled) Sheet else Muted,
+                        color = if (enabled) OnAccent else Muted,
                         modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
                     )
                 }

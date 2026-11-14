@@ -1,6 +1,7 @@
 package com.example.csvtango.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -24,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.csvtango.ui.theme.TopBarBrush
+import com.example.csvtango.ui.theme.OnAccent
 import com.example.csvtango.ui.theme.Accent
 import com.example.csvtango.ui.theme.FieldBg
 import com.example.csvtango.ui.theme.Ink
@@ -37,6 +40,7 @@ fun TopBar(content: @Composable RowScope.() -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .background(TopBarBrush)
                 .windowInsetsPadding(WindowInsets.statusBars)
                 .padding(horizontal = 20.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -58,7 +62,7 @@ fun PrimaryButton(
         onClick = onClick,
         modifier = modifier,
         shape = RoundedCornerShape(10.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Sheet),
+        colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = OnAccent),
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
     ) {
         Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
@@ -72,7 +76,7 @@ fun Chip(text: String, active: Boolean, onClick: () -> Unit) {
         onClick = onClick,
         shape = CircleShape,
         color = if (active) Accent else FieldBg,
-        contentColor = if (active) Sheet else Ink,
+        contentColor = if (active) OnAccent else Ink,
         border = BorderStroke(1.dp, if (active) Accent else Line),
     ) {
         Text(

@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.csvtango.data.Folder
 import com.example.csvtango.data.Topic
+import com.example.csvtango.ui.theme.BottomBarBrush
 import com.example.csvtango.ui.theme.Accent
 import com.example.csvtango.ui.theme.FieldBg
 import com.example.csvtango.ui.theme.Gold
@@ -166,6 +167,7 @@ fun CombinedQuizScreen(
             Box(
                 Modifier
                     .fillMaxWidth()
+                    .background(BottomBarBrush)
                     .padding(horizontal = 20.dp, vertical = 14.dp)
                     .windowInsetsPadding(WindowInsets.navigationBars),
             ) {

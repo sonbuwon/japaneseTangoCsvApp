@@ -64,6 +64,7 @@ import com.example.csvtango.data.StudyCard
 import com.example.csvtango.speech.JapaneseSpeaker
 import com.example.csvtango.speech.SpeechTarget
 import com.example.csvtango.speech.firstReading
+import com.example.csvtango.ui.theme.OnAccent
 import com.example.csvtango.ui.theme.Accent
 import com.example.csvtango.ui.theme.ErrBg
 import com.example.csvtango.ui.theme.ErrInk
@@ -284,7 +285,7 @@ private fun AnswerField(index: Int, katakana: Boolean, locked: Boolean, onSubmit
                 "확인",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = if (!locked && input.isNotBlank()) Sheet else Muted,
+                color = if (!locked && input.isNotBlank()) OnAccent else Muted,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 17.dp),
             )
         }
@@ -457,7 +458,7 @@ private fun BigButton(text: String, onClick: () -> Unit, primary: Boolean = true
             text,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
-            color = if (primary) Sheet else Ink,
+            color = if (primary) OnAccent else Ink,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(vertical = 15.dp),
         )

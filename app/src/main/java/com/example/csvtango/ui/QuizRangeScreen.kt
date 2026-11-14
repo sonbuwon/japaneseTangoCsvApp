@@ -10,6 +10,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.example.csvtango.ui.theme.BottomBarBrush
+import com.example.csvtango.ui.theme.OnAccent
 import com.example.csvtango.ui.theme.OkInk
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.RangeSliderState
@@ -155,6 +157,7 @@ fun QuizRangeScreen(
             Box(
                 Modifier
                     .fillMaxWidth()
+                    .background(BottomBarBrush)
                     .padding(horizontal = 20.dp, vertical = 14.dp)
                     .windowInsetsPadding(WindowInsets.navigationBars),
             ) {
@@ -176,7 +179,7 @@ fun QuizRangeScreen(
                         },
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (enabled) Sheet else Muted,
+                        color = if (enabled) OnAccent else Muted,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 15.dp),
                     )

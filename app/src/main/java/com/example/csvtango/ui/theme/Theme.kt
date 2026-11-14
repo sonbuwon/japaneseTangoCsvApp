@@ -1,17 +1,13 @@
 package com.example.csvtango.ui.theme
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 
-/**
- * 웹 버전과 같은 종이 느낌의 밝은 배색 하나만 쓴다.
- * (원본 웹앱에도 어두운 배색이 없다.)
- */
-private val PaperScheme = lightColorScheme(
+/** 어두운 리더 배색 하나만 쓴다. (색 정의는 Color.kt) */
+private val PaperScheme = darkColorScheme(
     primary = Accent,
-    onPrimary = Color.White,
+    onPrimary = OnAccent,
     primaryContainer = AccentSoft,
     onPrimaryContainer = Accent,
     background = Paper,
@@ -19,6 +15,12 @@ private val PaperScheme = lightColorScheme(
     surface = Sheet,
     onSurface = Ink,
     surfaceVariant = FieldBg,
+    surfaceContainer = Sheet,
+    surfaceContainerHigh = Hover,
+    surfaceContainerHighest = Hover,
+    inverseSurface = Ink,
+    inverseOnSurface = Paper,
+    scrim = Scrim,
     onSurfaceVariant = Muted,
     outline = Muted,
     outlineVariant = Line,

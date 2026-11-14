@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- Android 12 이상: 시스템 스플래시 화면의 배경색. 가운데 아이콘은 앱 아이콘 그대로. -->
-    <style name="Theme.CsvTango" parent="android:Theme.Material.Light.NoActionBar">
+    <!-- Android 12 이상: 시스템 스플래시 화면. 배경색만 칠하고 가운데 앱 아이콘은 투명하게 비운다. -->
+    <style name="Theme.CsvTango" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/splash_background</item>
         <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
     </style>
 </resources>

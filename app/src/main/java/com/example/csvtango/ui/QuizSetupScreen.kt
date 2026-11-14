@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.csvtango.data.Folder
 import com.example.csvtango.data.Topic
+import com.example.csvtango.ui.theme.BottomBarBrush
+import com.example.csvtango.ui.theme.OnAccent
 import com.example.csvtango.ui.theme.Accent
 import com.example.csvtango.ui.theme.AccentSoft
 import com.example.csvtango.ui.theme.Gold
@@ -107,9 +109,9 @@ fun QuizSetupScreen(
                             checked = shuffle,
                             onCheckedChange = { onToggleShuffle() },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = Sheet,
-                                checkedTrackColor = Accent,
-                                uncheckedThumbColor = Sheet,
+                                checkedThumbColor = OnAccent,
+                                checkedTrackColor = Ink,
+                                uncheckedThumbColor = Ink,
                                 uncheckedTrackColor = StarOff,
                                 uncheckedBorderColor = StarOff,
                             ),
@@ -216,6 +218,7 @@ fun QuizSetupScreen(
             Box(
                 Modifier
                     .fillMaxWidth()
+                    .background(BottomBarBrush)
                     .padding(horizontal = 20.dp, vertical = 14.dp)
                     .windowInsetsPadding(WindowInsets.navigationBars),
             ) {
@@ -239,14 +242,14 @@ internal fun StartButton(text: String, enabled: Boolean, onClick: () -> Unit) {
         onClick = onClick,
         enabled = enabled,
         shape = RoundedCornerShape(12.dp),
-        color = if (enabled) Accent else Line,
+        color = if (enabled) Ink else Line,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
             text,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
-            color = if (enabled) Sheet else Muted,
+            color = if (enabled) OnAccent else Muted,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(vertical = 15.dp),
         )
@@ -269,7 +272,7 @@ internal fun SelectRow(
         enabled = enabled,
         shape = RoundedCornerShape(16.dp),
         color = background,
-        border = BorderStroke(1.dp, if (checked) Accent.copy(alpha = .6f) else border),
+        border = BorderStroke(1.dp, if (checked) Ink.copy(alpha = .6f) else border),
     ) {
         Row(
             Modifier
@@ -298,13 +301,13 @@ internal fun SelectRow(
     }
 }
 
-/** 동그란 선택 표시. 고르면 강조색으로 채우고 체크를 그린다. */
+/** 동그란 선택 표시. 고르면 글자색(하얀 회색)으로 채우고 체크를 그린다. */
 @Composable
 private fun CheckMark(checked: Boolean) {
     Surface(
         shape = CircleShape,
-        color = if (checked) Accent else Sheet,
-        border = BorderStroke(1.5.dp, if (checked) Accent else StarOff),
+        color = if (checked) Ink else Sheet,
+        border = BorderStroke(1.5.dp, if (checked) Ink else StarOff),
         modifier = Modifier.size(26.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
@@ -343,7 +346,7 @@ private fun FolderHeader(
                 if (selectedCount > 0) "${selectedCount}/${topicCount} 선택" else "주제 ${topicCount}개",
                 fontSize = 12.sp,
                 fontWeight = if (selectedCount > 0) FontWeight.SemiBold else FontWeight.Normal,
-                color = if (selectedCount > 0) Accent else StarOff,
+                color = if (selectedCount > 0) Ink else StarOff,
             )
             HorizontalDivider(color = Line, modifier = Modifier.weight(1f))
         }
