@@ -68,13 +68,22 @@ data class StudyCard(
     val index: Int,
 )
 
-/** 학습 중인 카드 묶음과 현재 위치. */
+/**
+ * 학습 중인 카드 묶음과 현재 위치.
+ *
+ * [original] 은 순서를 섞기 전의 카드 순서. 섞여 있지 않으면 null.
+ * 섞여 있는 동안에는 원래 순서 기준인 [암기] 범위를 정할 수 없다.
+ */
 data class StudySession(
     val title: String,
     val cards: List<StudyCard>,
     val index: Int = 0,
+    val original: List<StudyCard>? = null,
 ) {
     val current: StudyCard get() = cards[index]
+
+    /** 지금 순서가 섞여 있는지. */
+    val shuffled: Boolean get() = original != null
 }
 
 private val DATE_FORMAT = SimpleDateFormat("yyyy.MM.dd", Locale.US)

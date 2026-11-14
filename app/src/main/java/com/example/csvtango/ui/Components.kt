@@ -48,12 +48,17 @@ fun TopBar(content: @Composable RowScope.() -> Unit) {
 }
 
 @Composable
-fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun PrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    color: androidx.compose.ui.graphics.Color = Accent,
+) {
     Button(
         onClick = onClick,
         modifier = modifier,
         shape = RoundedCornerShape(10.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Sheet),
+        colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Sheet),
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
     ) {
         Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)

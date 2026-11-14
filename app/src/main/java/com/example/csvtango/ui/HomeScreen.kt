@@ -51,8 +51,8 @@ fun HomeScreen(
     Column(Modifier.fillMaxSize().background(Paper)) {
         TopBar {
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("単語カード", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
-                Text("일본어 단어 카드", fontSize = 12.sp, color = Muted)
+                Text("日本語勉強", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
+                Text("일본어 공부", fontSize = 12.sp, color = Muted)
             }
         }
 
@@ -74,14 +74,14 @@ fun HomeScreen(
 
             ModeCard(
                 glyph = "📚",
-                title = "암기",
+                title = "단어 암기",
                 detail = if (hasWords) null else "암기 화면의 [+ csv]로 단어장을 만듭니다",
                 onClick = onMemorize,
             )
 
             ModeCard(
                 glyph = "✏️",
-                title = "시험",
+                title = "단어 시험",
                 detail = if (hasWords) null else "먼저 암기 화면의 [+ csv]로 단어장을 추가해 주세요",
                 enabled = hasWords,
                 onClick = onQuiz,

@@ -91,6 +91,7 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
     fun goHome() {
         session = null
         quiz = null
+        quizFromStudy = false
         editing = false
         openFolderId = null
         screen = Screen.HOME
@@ -398,15 +399,89 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
         flipped = false
     }
 
+    /**
+     * [순서 섞기]를 켜고 끈다.
+     * 켤 때는 매번 새로 무작위로 섞고 첫 카드부터 본다.
+     * 끌 때는 원래 순서로 되돌리고, 보고 있던 카드의 원래 자리로 간다.
+     */
     fun shuffle() {
         val current = session ?: return
-        session = current.copy(cards = current.cards.shuffled(), index = 0)
+        val original = current.original
+        session = if (original == null) {
+            current.copy(cards = current.cards.shuffled(), index = 0, original = current.cards)
+        } else {
+            // 섞여 있는 동안 바뀐 북마크를 원래 순서의 카드에도 반영한다.
+            val restored = original.map { sc ->
+                val on = isBookmarked(sc)
+                if (sc.card.bookmarked == on) sc else sc.copy(card = sc.card.copy(bookmarked = on))
+            }
+            val viewing = current.current
+            val index = restored.indexOfFirst { it.topicId == viewing.topicId && it.index == viewing.index }
+            current.copy(cards = restored, index = index.coerceAtLeast(0), original = null)
+        }
         flipped = false
+    }
+
+    /* ---------------- 암기(학습 화면에서 범위를 정해 보는 입력 시험) ---------------- */
+
+    /** 지금 시험이 학습 화면의 [암기]에서 시작됐는지. 끝내면 학습 화면으로 돌아간다. */
+    var quizFromStudy by mutableStateOf(false)
+        private set
+
+    /** 결과 화면의 [홈으로]·뒤로 가기. [암기]에서 시작했으면 홈 대신 그 플래시 카드로 돌아간다. */
+    fun finishQuiz() {
+        if (quizFromStudy) returnToStudy() else goHome()
+    }
+
+    /** 학습 카드 중 [range](0부터, 양끝 포함) 안의 문제. 정답을 아는 카드만, 겹치는 단어는 하나만. */
+    private fun studyQuizQuestions(range: IntRange): List<QuizQuestion> {
+        val current = session ?: return emptyList()
+        if (current.shuffled) return emptyList()
+        return current.cards
+            .filterIndexed { i, _ -> i in range }
+            .map(::QuizQuestion)
+            .filter { it.answerable }
+            .distinctBy { it.wordKey }
+    }
+
+    /** [암기] 범위 안에서 낼 수 있는 문제 수. */
+    fun studyQuizCount(range: IntRange): Int = studyQuizQuestions(range).size
+
+    /** [암기] 범위로 입력 시험을 시작한다. 주제 시험과 같은 화면·채점 규칙(틀리면 북마크)을 쓴다. */
+    fun startStudyQuiz(range: IntRange) {
+        val current = session ?: return
+        val questions = studyQuizQuestions(range)
+        if (questions.isEmpty()) return
+        val whole = range.first == 0 && range.last == current.cards.lastIndex
+        val title = if (whole) current.title else "${current.title} (${range.first + 1}~${range.last + 1})"
+        quizCombined = false
+        quizFromStudy = true
+        launchQuiz(title, questions)
+    }
+
+    /** 시험을 마치고 학습 화면으로 돌아온다. 시험 중 바뀐 북마크를 학습 카드에도 반영한다. */
+    private fun returnToStudy() {
+        val current = session ?: return goMemorize()
+        quiz = null
+        session = current.copy(
+            cards = current.cards.map { sc ->
+                val on = isBookmarked(sc)
+                if (sc.card.bookmarked == on) sc else sc.copy(card = sc.card.copy(bookmarked = on))
+            },
+        )
+        flipped = false
+        screen = Screen.STUDY
     }
 
     fun toggleBookmark() {
         val current = session ?: return
-        val studyCard = current.current
+        toggleBookmarkAt(current.index)
+    }
+
+    /** 학습 카드 [index] 번째(지금 순서 기준)의 북마크를 켜거나 끈다. 단어 목록의 별에서 쓴다. */
+    fun toggleBookmarkAt(index: Int) {
+        val current = session ?: return
+        val studyCard = current.cards.getOrNull(index) ?: return
         val on = !studyCard.card.bookmarked
 
         setBookmark(studyCard, on)
@@ -414,7 +489,7 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
         // 화면에 보이는 사본에도 반영한다. (카드를 다시 그리지 않으므로 뒤집힌 상태가 유지된다)
         session = current.copy(
             cards = current.cards.mapIndexed { i, sc ->
-                if (i == current.index) sc.copy(card = sc.card.copy(bookmarked = on)) else sc
+                if (i == index) sc.copy(card = sc.card.copy(bookmarked = on)) else sc
             },
         )
     }
@@ -554,6 +629,7 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
             else "${quizSourceTitle(source)} (${range.first + 1}~${range.last + 1})"
         }
         quizCombined = false
+        quizFromStudy = false
         launchQuiz(title, questions)
     }
 
@@ -565,12 +641,20 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
 
     /** 시험을 그만두면 시험을 고른 화면으로 돌아간다. (일반: 범위 지정, 종합: 종합 시험 설정) */
     fun leaveQuiz() {
-        if (quizCombined) goCombinedSetup() else goQuizRange(quizRangeStep)
+        when {
+            quizFromStudy -> returnToStudy()
+            quizCombined -> goCombinedSetup()
+            else -> goQuizRange(quizRangeStep)
+        }
     }
 
-    /** 결과 화면의 [시험 설정]. */
+    /** 결과 화면의 [시험 설정]. [암기]에서 시작했으면 학습 화면으로 돌아가 범위를 다시 정한다. */
     fun goQuizOriginSetup() {
-        if (quizCombined) goCombinedSetup() else goQuizSetup()
+        when {
+            quizFromStudy -> returnToStudy()
+            quizCombined -> goCombinedSetup()
+            else -> goQuizSetup()
+        }
     }
 
     /* ---------------- 종합 시험 ---------------- */
@@ -625,6 +709,7 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
         val count = combinedQuestionCount
         if (count <= 0) return
         quizCombined = true
+        quizFromStudy = false
         launchQuiz("종합 시험", combinedPool().shuffled().take(count))
     }
 

@@ -99,9 +99,10 @@ fun QuizScreen(
     onRestart: () -> Unit,
     onSetup: () -> Unit,
     onHome: () -> Unit,
+    homeLabel: String = "홈으로",
 ) {
     if (session.finished) {
-        ResultView(session, isBookmarked, onToggleCardBookmark, onRetryWrong, onRestart, onSetup, onHome)
+        ResultView(session, isBookmarked, onToggleCardBookmark, onRetryWrong, onRestart, onSetup, onHome, homeLabel)
         return
     }
 
@@ -473,6 +474,7 @@ private fun ResultView(
     onRestart: () -> Unit,
     onSetup: () -> Unit,
     onHome: () -> Unit,
+    homeLabel: String,
 ) {
     val total = session.questions.size
     val correct = session.correctCount
@@ -529,7 +531,7 @@ private fun ResultView(
             BigButton("같은 범위로 다시 시험", onRestart, primary = wrong.isEmpty())
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 GhostButton("시험 설정", onSetup, Modifier.weight(1f))
-                GhostButton("홈으로", onHome, Modifier.weight(1f))
+                GhostButton(homeLabel, onHome, Modifier.weight(1f))
             }
 
             if (wrong.isNotEmpty()) {

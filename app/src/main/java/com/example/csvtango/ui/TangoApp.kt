@@ -158,7 +158,10 @@ private fun Screens(vm: TangoViewModel, speaker: JapaneseSpeaker) {
                 onMove = vm::move,
                 onSeek = vm::jumpTo,
                 onShuffle = vm::shuffle,
+                quizCount = vm::studyQuizCount,
+                onStartQuiz = { speaker.stop(); vm.startStudyQuiz(it) },
                 onToggleBookmark = vm::toggleBookmark,
+                onToggleBookmarkAt = vm::toggleBookmarkAt,
             )
         }
 
@@ -226,7 +229,8 @@ private fun Screens(vm: TangoViewModel, speaker: JapaneseSpeaker) {
                 onRetryWrong = vm::retryWrong,
                 onRestart = vm::restartQuiz,
                 onSetup = vm::goQuizOriginSetup,
-                onHome = vm::goHome,
+                onHome = { speaker.stop(); vm.finishQuiz() },
+                homeLabel = if (vm.quizFromStudy) "플래시 카드로" else "홈으로",
             )
         }
     }

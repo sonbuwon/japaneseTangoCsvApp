@@ -61,6 +61,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -104,12 +105,21 @@ fun StudyScreen(
     onMove: (Int) -> Unit,
     onSeek: (Int) -> Unit,
     onShuffle: () -> Unit,
+    quizCount: (IntRange) -> Int,
+    onStartQuiz: (IntRange) -> Unit,
     onToggleBookmark: () -> Unit,
+    onToggleBookmarkAt: (Int) -> Unit,
 ) {
     val card = session.current.card
     var wordListOpen by remember { mutableStateOf(false) }
 
+    // [암기] 범위 지정 바. 열 때마다 기본값을 새로 잡는다.
+    var rangeOpen by remember { mutableStateOf(false) }
+    var draftRange by remember { mutableStateOf(0..0) }
+    val canSetRange = !session.shuffled && session.cards.size > 1
+
     BackHandler(enabled = wordListOpen) { wordListOpen = false }
+    BackHandler(enabled = rangeOpen && !wordListOpen) { rangeOpen = false }
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().background(Paper)) {
@@ -165,26 +175,58 @@ fun StudyScreen(
                 NavButton("다음 ›", Modifier.weight(1f)) { onMove(1) }
             }
 
+            AnimatedVisibility(visible = rangeOpen && canSetRange) {
+                StudyRangeBar(
+                    size = session.cards.size,
+                    range = draftRange,
+                    questionCount = quizCount(draftRange),
+                    onRangeChange = { draftRange = it },
+                    onStart = {
+                        rangeOpen = false
+                        onStartQuiz(draftRange)
+                    },
+                )
+            }
+
             Row(
                 Modifier.fillMaxWidth().padding(top = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 BookmarkButton(card.bookmarked, onToggleBookmark, Modifier.weight(1f))
+                // 누를 때마다 [섞기] ↔ [원래대로]를 오간다. 섞여 있으면 강조한다.
                 Surface(
-                    onClick = onShuffle,
+                    onClick = {
+                        rangeOpen = false
+                        onShuffle()
+                    },
                     shape = RoundedCornerShape(10.dp),
-                    color = Paper,
-                    border = BorderStroke(1.dp, Line),
+                    color = if (session.shuffled) AccentSoft else Paper,
+                    border = BorderStroke(1.dp, if (session.shuffled) Accent else Line),
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(
-                        "🔀 순서 섞기",
+                        if (session.shuffled) "↩️ 원래대로" else "🔀 순서 섞기",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Muted,
+                        color = if (session.shuffled) Accent else Muted,
+                        maxLines = 1,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 13.dp),
                     )
+                }
+                // 순서를 섞은 뒤에는 원래 순서 기준인 범위를 정할 수 없으므로 비활성화한다.
+                MemorizeButton(
+                    enabled = canSetRange,
+                    active = rangeOpen,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    if (rangeOpen) {
+                        rangeOpen = false
+                    } else {
+                        // 기본값: 1번부터 지금 보고 있는 카드까지.
+                        draftRange = 0..session.index
+                        rangeOpen = true
+                    }
                 }
             }
         }
@@ -212,6 +254,7 @@ fun StudyScreen(
     ) {
         WordListPanel(
             session = session,
+            onToggleBookmark = onToggleBookmarkAt,
             onPick = { i ->
                 onSeek(i)
                 wordListOpen = false
@@ -223,7 +266,7 @@ fun StudyScreen(
 
 /** 주제의 단어를 일본어·히라가나·한국어로 훑어보는 패널. 누르면 그 카드로 이동한다. */
 @Composable
-private fun WordListPanel(session: StudySession, onPick: (Int) -> Unit) {
+private fun WordListPanel(session: StudySession, onToggleBookmark: (Int) -> Unit, onPick: (Int) -> Unit) {
     val listState = rememberLazyListState()
 
     // 열면 지금 보고 있는 카드가 바로 보이게 한다.
@@ -290,8 +333,21 @@ private fun WordListPanel(session: StudySession, onPick: (Int) -> Unit) {
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
-                        if (sc.card.bookmarked) {
-                            Text("★", fontSize = 13.sp, color = Gold)
+                        // 별을 누르면 북마크를 켜고 끈다. (줄을 눌러 이동하는 것과 따로 받는다)
+                        Box(
+                            Modifier
+                                .clip(CircleShape)
+                                .clickable(onClickLabel = if (sc.card.bookmarked) "북마크 해제" else "북마크") {
+                                    onToggleBookmark(i)
+                                }
+                                .padding(4.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                if (sc.card.bookmarked) "★" else "☆",
+                                fontSize = 20.sp,
+                                color = if (sc.card.bookmarked) Gold else StarOff,
+                            )
                         }
                     }
                     HorizontalDivider(color = Line.copy(alpha = .6f))
@@ -586,6 +642,79 @@ private fun BookmarkButton(on: Boolean, onClick: () -> Unit, modifier: Modifier 
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(vertical = 13.dp),
         )
+    }
+}
+
+/** 하단의 [암기] 버튼. 누르면 범위 지정 바를 열고 닫는다. 바가 열려 있으면 강조한다. */
+@Composable
+private fun MemorizeButton(enabled: Boolean, active: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val on = enabled && active
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(10.dp),
+        color = if (on) AccentSoft else Paper,
+        border = BorderStroke(1.dp, if (on) Accent else Line),
+        modifier = modifier.alpha(if (enabled) 1f else .4f),
+    ) {
+        Text(
+            "📖 암기",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = if (on) Accent else Muted,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 13.dp),
+        )
+    }
+}
+
+/** [암기] 범위 지정 바. 몇 번부터 몇 번까지 입력 시험을 볼지 정한다. */
+@Composable
+private fun StudyRangeBar(
+    size: Int,
+    range: IntRange,
+    questionCount: Int,
+    onRangeChange: (IntRange) -> Unit,
+    onStart: () -> Unit,
+) {
+    val enabled = questionCount > 0
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Sheet,
+        border = BorderStroke(1.dp, Line),
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+    ) {
+        Column(Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 10.dp)) {
+            Text(
+                "암기 범위  ${range.first + 1}번 ~ ${range.last + 1}번",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Ink,
+            )
+            RangeBar(size, range, onRangeChange)
+            Row(
+                Modifier.fillMaxWidth(),
+                // 바는 [암기] 버튼을 다시 누르거나 뒤로 가기로 닫는다.
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    onClick = onStart,
+                    enabled = enabled,
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (enabled) Accent else Line,
+                ) {
+                    Text(
+                        if (enabled) "시험 시작 · ${questionCount}문제" else "낼 문제가 없습니다",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (enabled) Sheet else Muted,
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                    )
+                }
+            }
+        }
     }
 }
 

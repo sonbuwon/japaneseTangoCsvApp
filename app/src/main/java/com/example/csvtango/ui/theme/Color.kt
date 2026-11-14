@@ -25,3 +25,6 @@ val OkBg = Color(0xFFECFDF5)
 val OkInk = Color(0xFF065F46)
 val ErrBg = Color(0xFFFEF2F2)
 val ErrInk = Color(0xFF991B1B)
+
+/** 엑셀을 대표하는 초록. [+ csv] 버튼에 쓴다. */
+val ExcelGreen = Color(0xFF217346)

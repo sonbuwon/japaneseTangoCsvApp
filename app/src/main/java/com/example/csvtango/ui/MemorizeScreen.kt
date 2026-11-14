@@ -55,6 +55,7 @@ import com.example.csvtango.data.Topic
 import com.example.csvtango.data.formatDate
 import com.example.csvtango.ui.theme.Accent
 import com.example.csvtango.ui.theme.AccentSoft
+import com.example.csvtango.ui.theme.ExcelGreen
 import com.example.csvtango.ui.theme.FieldBg
 import com.example.csvtango.ui.theme.Gold
 import com.example.csvtango.ui.theme.GoldBg
@@ -145,16 +146,16 @@ fun MemorizeScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        if (editing) "편집 중" else if (atRoot) "주제" else "폴더 속 주제",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (editing) Accent else Muted,
-                    )
+                    // 제목은 편집 중일 때만 보인다. 없을 때도 자리를 두어 오른쪽 버튼이 오른쪽에 붙어 있게 한다.
+                    if (editing) {
+                        Text("편집 중", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Accent)
+                    } else {
+                        Box(Modifier)
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (atRoot && !editing) {
-                            GhostButton("+ 폴더", { creatingFolder = true })
-                            PrimaryButton("+ csv", onAddCsv)
+                            GhostButton("+ 📁", { creatingFolder = true })
+                            PrimaryButton("+ csv", onAddCsv, color = ExcelGreen)
                         }
                         if (topics.isNotEmpty() || shownFolders.isNotEmpty()) {
                             GhostButton(if (editing) "완료" else "편집", onToggleEdit)

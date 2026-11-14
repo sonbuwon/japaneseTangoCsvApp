@@ -2,6 +2,18 @@ package com.example.csvtango.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import com.example.csvtango.ui.theme.OkInk
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.RangeSliderState
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -176,20 +188,59 @@ fun QuizRangeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RangeBar(size: Int, range: IntRange, onRangeChange: (IntRange) -> Unit) {
+internal fun RangeBar(size: Int, range: IntRange, onRangeChange: (IntRange) -> Unit) {
+    // 기본 손잡이(세로 막대) 대신 동그라미를 쓴다. 시작은 주황, 끝은 초록으로 구분한다.
     RangeSlider(
+        startThumb = { RangeThumb(RangeStartColor) },
+        endThumb = { RangeThumb(RangeEndColor) },
+        // 기본 막대는 굵고 손잡이 둘레를 비워 그려 동그라미를 가리므로, 얇은 막대를 직접 그린다.
+        track = { state -> RangeTrack(state) },
         value = range.first.toFloat()..range.last.toFloat(),
         onValueChange = { v -> onRangeChange(v.start.roundToInt()..v.endInclusive.roundToInt()) },
         valueRange = 0f..(size - 1).toFloat(),
         steps = if (size > 2) size - 2 else 0,
-        colors = SliderDefaults.colors(
-            thumbColor = Accent,
-            activeTrackColor = Accent,
-            inactiveTrackColor = Line,
-            activeTickColor = Accent.copy(alpha = 0f),
-            inactiveTickColor = StarOff.copy(alpha = 0f),
-        ),
     )
+}
+
+private val RangeStartColor = Accent
+private val RangeEndColor = OkInk
+
+/** 범위 손잡이. 막대(8dp)보다 조금 큰 동그라미. */
+@Composable
+private fun RangeThumb(color: Color) {
+    Box(
+        Modifier
+            .size(14.dp)
+            .shadow(1.5.dp, CircleShape)
+            .background(Sheet, CircleShape)
+            .padding(2.dp)
+            .background(color, CircleShape),
+    )
+}
+
+/** 범위 막대. 전체는 옅게, 고른 범위는 시작색 → 끝색으로 채운다. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RangeTrack(state: RangeSliderState) {
+    Canvas(Modifier.fillMaxWidth().height(8.dp)) {
+        val span = state.valueRange.endInclusive - state.valueRange.start
+        val from = if (span > 0f) (state.activeRangeStart - state.valueRange.start) / span else 0f
+        val to = if (span > 0f) (state.activeRangeEnd - state.valueRange.start) / span else 1f
+        val radius = CornerRadius(size.height / 2)
+
+        drawRoundRect(color = Line, cornerRadius = radius)
+
+        val left = size.width * from
+        val right = size.width * to
+        if (right > left) {
+            drawRoundRect(
+                brush = Brush.horizontalGradient(listOf(RangeStartColor, RangeEndColor), startX = left, endX = right),
+                topLeft = Offset(left, 0f),
+                size = Size(right - left, size.height),
+                cornerRadius = radius,
+            )
+        }
+    }
 }
 
 @Composable
