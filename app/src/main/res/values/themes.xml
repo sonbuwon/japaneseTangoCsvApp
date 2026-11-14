@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.CsvTango" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+        Android 11 이하에는 시스템 스플래시가 없어 앱이 그려지기 전 창 배경이 보인다.
+        그 화면도 스플래시와 같은 색으로 맞춘다. (앱 화면은 Compose 가 배경을 직접 칠한다)
+    -->
+    <style name="Theme.CsvTango" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
 </resources>

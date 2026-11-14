@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 앱 강조색에서 살짝 어두워지는 대각선 그라데이션 -->
+<!-- 왼쪽 위 흰색 → 오른쪽 아래 빨강 대각선 그라데이션 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
@@ -14,8 +14,7 @@
                 android:endX="108"
                 android:endY="108"
                 android:type="linear">
-                <item android:offset="0" android:color="#C2410C" />
-                <item android:offset="1" android:color="#9A3108" />
+                <item android:offset="0" android:color="#FFFFFF" />                <item android:offset="1" android:color="#C8102E" />
             </gradient>
         </aapt:attr>
     </path>

@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -108,6 +110,12 @@ fun MemorizeScreen(
     val topics = topicsIn(openFolder?.id)
     val shownFolders = if (atRoot) folders else emptyList()
 
+    // 편집 중에 폴더·주제를 꾹 눌러 끌면 순서를 바꾼다. 폴더는 폴더끼리, 주제는 주제끼리.
+    val listState = rememberLazyListState()
+    val reorder = rememberReorderState(listState)
+    val folderKeys = shownFolders.map { "folder:" + it.id }
+    val topicKeys = topics.map { it.id }
+
     Column(Modifier.fillMaxSize().background(Paper)) {
         TopBar {
             if (openFolder == null) {
@@ -117,7 +125,7 @@ fun MemorizeScreen(
                     verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("암기", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Ink)
+                    Text("단어 암기", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Ink)
                     Text("単語カード", fontSize = 12.sp, color = Muted)
                 }
             } else {
@@ -136,6 +144,7 @@ fun MemorizeScreen(
         }
 
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 48.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -177,6 +186,7 @@ fun MemorizeScreen(
                     }
                 }
                 itemsIndexed(shownFolders, key = { _, folder -> "folder:" + folder.id }) { index, folder ->
+                    val key = "folder:" + folder.id
                     FolderItem(
                         folder = folder,
                         topics = topicsIn(folder.id),
@@ -187,7 +197,11 @@ fun MemorizeScreen(
                         onMove = { delta -> onMoveFolder(folder, delta) },
                         onRename = { pendingFolderRename = folder },
                         onDelete = { pendingFolderDelete = folder },
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier
+                            .animateItem(placementSpec = if (reorder.isDragging(key)) null else spring())
+                            .reorderable(reorder, key, enabled = editing, groupKeys = folderKeys) { delta ->
+                                onMoveFolder(folder, delta)
+                            },
                     )
                 }
                 itemsIndexed(topics, key = { _, topic -> topic.id }) { index, topic ->
@@ -202,7 +216,11 @@ fun MemorizeScreen(
                         onRename = { pendingRename = topic },
                         onChangeFolder = { pendingMove = topic },
                         onDelete = { pendingDelete = topic },
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier
+                            .animateItem(placementSpec = if (reorder.isDragging(topic.id)) null else spring())
+                            .reorderable(reorder, topic.id, enabled = editing, groupKeys = topicKeys) { delta ->
+                                onMove(topic, delta)
+                            },
                     )
                 }
                 if (!atRoot && topics.isEmpty()) {

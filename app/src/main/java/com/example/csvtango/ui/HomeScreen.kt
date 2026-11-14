@@ -24,7 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.csvtango.ui.theme.Accent
@@ -64,13 +66,41 @@ fun HomeScreen(
                 .windowInsetsPadding(WindowInsets.navigationBars),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                "무엇을 할까요?",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Muted,
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(0.dp),
                 modifier = Modifier.padding(bottom = 6.dp),
-            )
+            ) {
+                Text(
+                    "何をしましょうか?",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Muted,
+                    // 줄 높이를 글자 크기에 맞추고 아래 여백을 잘라 아래 줄과 붙인다.
+                    style = TextStyle(
+                        lineHeight = 15.sp,
+                        lineHeightStyle = LineHeightStyle(
+                            alignment = LineHeightStyle.Alignment.Center,
+                            trim = LineHeightStyle.Trim.LastLineBottom,
+                        ),
+                    ),
+                )
+
+                Text(
+                    "무엇을 할까요?",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = Muted.copy(alpha = 0.6f),
+                    // 위 여백을 잘라 위 줄과 붙인다.
+                    style = TextStyle(
+                        lineHeight = 13.sp,
+                        lineHeightStyle = LineHeightStyle(
+                            alignment = LineHeightStyle.Alignment.Center,
+                            trim = LineHeightStyle.Trim.FirstLineTop,
+                        ),
+                    ),
+                )
+            }
 
             ModeCard(
                 glyph = "📚",

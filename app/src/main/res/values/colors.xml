@@ -7,4 +7,6 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- 앱을 처음 켤 때 보이는 스플래시 화면 배경 -->
+    <color name="splash_background">#FFF8D2D4</color>
 </resources>
