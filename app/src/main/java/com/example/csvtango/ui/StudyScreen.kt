@@ -24,8 +24,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -167,19 +165,12 @@ fun StudyScreen(
             Flashcard(
                 card = card,
                 flipped = flipped,
-                speaker = speaker,
                 onFlip = onFlip,
                 onSwipe = onMove,
                 modifier = Modifier.weight(1f).padding(top = 6.dp),
             )
 
-            Row(
-                Modifier.fillMaxWidth().padding(top = 18.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                NavButton("‹ 이전", Modifier.weight(1f)) { onMove(-1) }
-                NavButton("다음 ›", Modifier.weight(1f)) { onMove(1) }
-            }
+            ListenRow(card, speaker)
 
             AnimatedVisibility(visible = rangeOpen && canSetRange) {
                 StudyRangeBar(
@@ -211,7 +202,7 @@ fun StudyScreen(
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(
-                        if (session.shuffled) "↩️ 원래대로" else "🔀 순서 섞기",
+                        if (session.shuffled) "↩️ 원래대로" else "🔀 섞기",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = if (session.shuffled) Accent else Muted,
@@ -450,7 +441,6 @@ private fun indexAt(x: Float, width: Int, total: Int): Int {
 private fun Flashcard(
     card: Card,
     flipped: Boolean,
-    speaker: JapaneseSpeaker,
     onFlip: () -> Unit,
     onSwipe: (Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -528,7 +518,7 @@ private fun Flashcard(
         ) {
             // 절반을 넘어가면 뒷면을 보여 준다. (뒷면은 다시 뒤집어 글자가 거울처럼 보이지 않게 한다)
             if (rotation <= 90f) {
-                FrontFace(card, speaker)
+                FrontFace(card)
             } else {
                 Box(Modifier.graphicsLayer { rotationY = 180f }) { BackFace(card) }
             }
@@ -536,11 +526,8 @@ private fun Flashcard(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FrontFace(card: Card, speaker: JapaneseSpeaker) {
-    val context = LocalContext.current
-
+private fun FrontFace(card: Card) {
     Face {
         Text(
             card.jp,
@@ -561,31 +548,66 @@ private fun FrontFace(card: Card, speaker: JapaneseSpeaker) {
                 Text(card.exJp, fontSize = 15.sp, lineHeight = 25.sp, color = Ink, textAlign = TextAlign.Center)
             }
         }
+    }
+}
 
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+/** 카드 바로 아래의 듣기 버튼 줄. */
+@Composable
+private fun ListenRow(card: Card, speaker: JapaneseSpeaker) {
+    val context = LocalContext.current
+
+    Row(
+        Modifier.fillMaxWidth().padding(top = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        ListenButton(
+            text = "🔊 단어 듣기",
+            active = speaker.speaking == SpeechTarget.WORD,
+            modifier = Modifier.weight(1f),
         ) {
-            Chip(
-                text = "🔊 단어 듣기",
-                active = speaker.speaking == SpeechTarget.WORD,
-                onClick = {
-                    if (!speaker.japaneseAvailable) context.toastNoVoice()
-                    else speaker.speak(firstReading(card.kana).ifEmpty { card.jp }, SpeechTarget.WORD, 0.9f)
-                },
-            )
-
-            if (card.hasExample) {
-                Chip(
-                    text = "🔊 예문 듣기",
-                    active = speaker.speaking == SpeechTarget.SENTENCE,
-                    onClick = {
-                        if (!speaker.japaneseAvailable) context.toastNoVoice()
-                        else speaker.speak(card.exKana.ifEmpty { card.exJp }, SpeechTarget.SENTENCE, 0.85f)
-                    },
-                )
-            }
+            if (!speaker.japaneseAvailable) context.toastNoVoice()
+            else speaker.speak(firstReading(card.kana).ifEmpty { card.jp }, SpeechTarget.WORD, 0.9f)
         }
+
+        // 예문이 없어도 자리는 지킨다. (버튼 위치가 카드마다 달라지지 않게)
+        ListenButton(
+            text = "🔊 예문 듣기",
+            active = speaker.speaking == SpeechTarget.SENTENCE,
+            enabled = card.hasExample,
+            modifier = Modifier.weight(1f),
+        ) {
+            if (!speaker.japaneseAvailable) context.toastNoVoice()
+            else speaker.speak(card.exKana.ifEmpty { card.exJp }, SpeechTarget.SENTENCE, 0.85f)
+        }
+    }
+}
+
+/** 재생 중이면 강조하고, 비활성이면 흐리게 보여 준다. */
+@Composable
+private fun ListenButton(
+    text: String,
+    active: Boolean,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(10.dp),
+        color = if (active) AccentSoft else Paper,
+        border = BorderStroke(1.dp, if (active) Accent else Line),
+        modifier = modifier.alpha(if (enabled) 1f else .4f),
+    ) {
+        Text(
+            text,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = if (active) Accent else Muted,
+            maxLines = 1,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 13.dp),
+        )
     }
 }
 
@@ -726,26 +748,6 @@ private fun StudyRangeBar(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun NavButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(10.dp),
-        color = Sheet,
-        border = BorderStroke(1.dp, Line),
-        modifier = modifier,
-    ) {
-        Text(
-            text,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Ink,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
-        )
     }
 }
 
