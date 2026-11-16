@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -80,6 +81,7 @@ fun MemorizeScreen(
     topicsIn: (String?) -> List<Topic>,
     hasTopics: Boolean,
     bookmarkCount: Int,
+    recentTopic: Topic?,
     onBack: () -> Unit,
     onHome: () -> Unit,
     onOpenTopic: (Topic) -> Unit,
@@ -176,6 +178,18 @@ fun MemorizeScreen(
             if (atRoot && !hasTopics && folders.isEmpty()) {
                 item { EmptyHome() }
             } else {
+                if (atRoot && hasTopics && !editing && recentTopic != null) {
+                    item(key = "recent") {
+                        RecentTopicRow(
+                            topic = recentTopic,
+                            folderName = folders.find { it.id == recentTopic.folderId }?.name,
+                            onClick = { onOpenTopic(recentTopic) },
+                        )
+                    }
+                    item(key = "recent-divider") {
+                        HorizontalDivider(color = Line, modifier = Modifier.padding(vertical = 4.dp))
+                    }
+                }
                 if (atRoot && hasTopics && !editing) {
                     item {
                         BookmarkRow(
@@ -584,6 +598,48 @@ private fun IconAction(
             .padding(horizontal = 10.dp, vertical = 6.dp),
     ) {
         Text(glyph, fontSize = 16.sp, color = if (enabled) Muted else Line)
+    }
+}
+
+/** 목록 맨 위, 북마크 위에 놓이는 최근 본 주제. 누르면 바로 카드 학습으로 간다. */
+@Composable
+private fun RecentTopicRow(topic: Topic, folderName: String?, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        color = AccentSoft,
+        border = BorderStroke(1.dp, Accent.copy(alpha = .35f)),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Badge(text = topic.title.trim().take(1).uppercase().ifEmpty { "語" })
+
+            Column(Modifier.weight(1f)) {
+                Text("최근 본 주제", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Accent)
+                Text(
+                    topic.title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+                Text(
+                    listOfNotNull(folderName?.let { "📁 $it" }, "단어 ${topic.cards.size}개").joinToString(" · "),
+                    fontSize = 12.5.sp,
+                    color = Muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+            }
+
+            Text("›", fontSize = 22.sp, color = Muted, modifier = Modifier.padding(end = 8.dp))
+        }
     }
 }
 

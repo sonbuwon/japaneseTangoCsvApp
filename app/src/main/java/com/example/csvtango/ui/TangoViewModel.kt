@@ -338,7 +338,19 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
     var studyFromBookmarks by mutableStateOf(false)
         private set
 
+    /** 암기 화면에서 마지막으로 연 주제의 id. 기기에 저장해 앱을 다시 켜도 남는다. */
+    private var recentTopicId by mutableStateOf(store.loadRecentTopicId())
+
+    /** 최근 본 주제. 지워졌거나 연 적이 없으면 null. */
+    val recentTopic: Topic?
+        get() = recentTopicId?.let { id -> topics.find { it.id == id } }
+
     fun openTopic(topic: Topic) {
+        if (topic.cards.isEmpty()) return
+        if (recentTopicId != topic.id) {
+            recentTopicId = topic.id
+            store.saveRecentTopicId(topic.id)
+        }
         start(topic.title, topic.studyCards(), fromBookmarks = false)
     }
 

@@ -44,6 +44,13 @@ class TopicStore(context: Context) {
         prefs.edit { putString(KEY_FOLDERS, array.toString()) }
     }
 
+    /** 암기 화면에서 마지막으로 연 주제의 id. 없으면 null. */
+    fun loadRecentTopicId(): String? = prefs.getString(KEY_RECENT_TOPIC, null)
+
+    fun saveRecentTopicId(id: String?) {
+        prefs.edit { if (id == null) remove(KEY_RECENT_TOPIC) else putString(KEY_RECENT_TOPIC, id) }
+    }
+
     private fun Folder.toJson() = JSONObject().apply {
         put("id", id)
         put("name", name)
@@ -99,5 +106,6 @@ class TopicStore(context: Context) {
         const val PREFS = "jp-flashcards-v1"
         const val KEY_TOPICS = "topics"
         const val KEY_FOLDERS = "folders"
+        const val KEY_RECENT_TOPIC = "recentTopicId"
     }
 }
