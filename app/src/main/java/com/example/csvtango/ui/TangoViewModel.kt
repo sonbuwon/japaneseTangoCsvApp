@@ -190,10 +190,11 @@ class TangoViewModel(app: Application) : AndroidViewModel(app) {
         update(listOf(topic) + topics)
     }
 
-    fun renameTopic(topic: Topic, title: String) {
+    /** 주제의 제목·이모티콘·배경색을 바꾼다. [emoji]·[color] 가 null 이면 기본(제목 앞글자·기본 배경)으로 돌린다. */
+    fun editTopic(topic: Topic, title: String, emoji: String?, color: Long?) {
         val name = title.trim()
         if (name.isEmpty()) return
-        update(topics.map { if (it.id == topic.id) it.copy(title = name) else it })
+        update(topics.map { if (it.id == topic.id) it.copy(title = name, emoji = emoji, color = color) else it })
     }
 
     fun deleteTopic(topic: Topic) {

@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -54,7 +55,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.csvtango.data.Folder
+import com.example.csvtango.data.TOPIC_COLORS
 import com.example.csvtango.data.Topic
+import com.example.csvtango.data.lastEmoji
 import com.example.csvtango.data.formatDate
 import com.example.csvtango.ui.theme.Accent
 import com.example.csvtango.ui.theme.AccentSoft
@@ -91,7 +94,7 @@ fun MemorizeScreen(
     editing: Boolean,
     onToggleEdit: () -> Unit,
     onMove: (Topic, Int) -> Unit,
-    onRename: (Topic, String) -> Unit,
+    onEditTopic: (Topic, String, String?, Long?) -> Unit,
     onDelete: (Topic) -> Unit,
     onMoveToFolder: (Topic, String?) -> Unit,
     onCreateFolder: (String) -> Unit,
@@ -101,7 +104,7 @@ fun MemorizeScreen(
     onDeleteFolder: (Folder) -> Unit,
 ) {
     var pendingDelete by remember { mutableStateOf<Topic?>(null) }
-    var pendingRename by remember { mutableStateOf<Topic?>(null) }
+    var pendingEdit by remember { mutableStateOf<Topic?>(null) }
     var pendingMove by remember { mutableStateOf<Topic?>(null) }
     var pendingFolderDelete by remember { mutableStateOf<Folder?>(null) }
     var pendingFolderRename by remember { mutableStateOf<Folder?>(null) }
@@ -227,7 +230,7 @@ fun MemorizeScreen(
                         canChangeFolder = folders.isNotEmpty(),
                         onClick = { onOpenTopic(topic) },
                         onMove = { delta -> onMove(topic, delta) },
-                        onRename = { pendingRename = topic },
+                        onEdit = { pendingEdit = topic },
                         onChangeFolder = { pendingMove = topic },
                         onDelete = { pendingDelete = topic },
                         modifier = Modifier
@@ -263,12 +266,11 @@ fun MemorizeScreen(
         )
     }
 
-    pendingRename?.let { topic ->
-        NameDialog(
-            title = "제목 변경",
-            initial = topic.title,
-            onDismiss = { pendingRename = null },
-            onConfirm = { title -> onRename(topic, title); pendingRename = null },
+    pendingEdit?.let { topic ->
+        TopicEditDialog(
+            topic = topic,
+            onDismiss = { pendingEdit = null },
+            onConfirm = { title, emoji, color -> onEditTopic(topic, title, emoji, color); pendingEdit = null },
         )
     }
 
@@ -412,7 +414,7 @@ private fun TopicItem(
     canChangeFolder: Boolean,
     onClick: () -> Unit,
     onMove: (Int) -> Unit,
-    onRename: () -> Unit,
+    onEdit: () -> Unit,
     onChangeFolder: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
@@ -421,7 +423,7 @@ private fun TopicItem(
         onClick = onClick,
         enabled = !editing,   // 편집 중에는 눌러도 학습으로 넘어가지 않는다
         shape = RoundedCornerShape(16.dp),
-        color = Sheet,
+        color = topic.color?.let { Color(it) } ?: Sheet,
         border = BorderStroke(1.dp, if (editing) Accent.copy(alpha = .35f) else Line),
         modifier = modifier,
     ) {
@@ -436,7 +438,7 @@ private fun TopicItem(
                     IconAction("▼", "아래로", enabled = canMoveDown) { onMove(1) }
                 }
             } else {
-                Badge(text = topic.title.trim().take(1).uppercase().ifEmpty { "語" })
+                Badge(text = topic.badgeText)
             }
 
             Column(Modifier.weight(1f)) {
@@ -457,7 +459,7 @@ private fun TopicItem(
             }
 
             if (editing) {
-                IconAction("✎", "제목 변경", onClick = onRename)
+                IconAction("✎", "주제 편집", onClick = onEdit)
                 if (canChangeFolder) IconAction("📁", "폴더 이동", onClick = onChangeFolder)
                 IconAction("✕", "삭제", onClick = onDelete)
             }
@@ -465,7 +467,7 @@ private fun TopicItem(
     }
 }
 
-/** 이름 하나를 입력받는 대화상자. (주제 제목 변경, 폴더 만들기·이름 변경) */
+/** 이름 하나를 입력받는 대화상자. (폴더 만들기·이름 변경) */
 @Composable
 private fun NameDialog(
     title: String,
@@ -512,6 +514,182 @@ private fun NameDialog(
         },
         containerColor = Sheet,
     )
+}
+
+/** 주제 편집에서 바로 고를 수 있는 이모티콘. 키보드로 다른 이모티콘을 넣을 수도 있다. */
+private val QUICK_EMOJIS = listOf(
+    "📚", "✏️", "🗾", "🌸", "🗻", "⛩️",
+    "🍣", "🍜", "🚃", "🏠", "💼", "🏥",
+    "🛒", "🎵", "⚽", "🌏", "⭐", "❤️",
+)
+
+/**
+ * 주제 편집: 제목, 표시 칸 이모티콘(하나만), 배경색을 바꾼다.
+ * 이모티콘을 비우면 표시 칸은 예전처럼 제목 앞글자를, 배경색을 [기본]으로 두면 기본 배경을 쓴다.
+ */
+@Composable
+private fun TopicEditDialog(
+    topic: Topic,
+    onDismiss: () -> Unit,
+    onConfirm: (title: String, emoji: String?, color: Long?) -> Unit,
+) {
+    var title by remember { mutableStateOf(topic.title) }
+    var emoji by remember { mutableStateOf(topic.emoji) }
+    var color by remember { mutableStateOf(topic.color) }
+    val focusRequester = remember { FocusRequester() }
+    val preview = topic.copy(title = title, emoji = emoji, color = color)
+    val canSave = title.isNotBlank()
+
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        focusedContainerColor = Sheet,
+        unfocusedContainerColor = FieldBg,
+        focusedBorderColor = Accent,
+        unfocusedBorderColor = Line,
+        cursorColor = Accent,
+        focusedTextColor = Ink,
+        unfocusedTextColor = Ink,
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("주제 편집") },
+        text = {
+            Column(
+                Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // 바뀐 모습을 미리 보여 준다.
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = preview.color?.let { Color(it) } ?: Sheet,
+                    border = BorderStroke(1.dp, Line),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Badge(text = preview.badgeText)
+                        Text(
+                            title.ifBlank { "제목" },
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (title.isBlank()) Muted else Ink,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+
+                SectionLabel("제목")
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { if (canSave) onConfirm(title, emoji, color) }),
+                    colors = fieldColors,
+                    modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                )
+
+                SectionLabel("이모티콘")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    // 새 이모티콘을 넣으면 그것 하나만 남는다. 이모티콘이 아닌 글자는 받지 않는다.
+                    OutlinedTextField(
+                        value = emoji.orEmpty(),
+                        onValueChange = { new -> emoji = if (new.isEmpty()) null else lastEmoji(new) ?: emoji },
+                        singleLine = true,
+                        placeholder = { Text("키보드로 입력", fontSize = 13.sp, color = Muted) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = fieldColors,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { emoji = null }, enabled = emoji != null) {
+                        Text("앞글자", color = if (emoji != null) Accent else Muted)
+                    }
+                }
+                QUICK_EMOJIS.chunked(6).forEach { row ->
+                    PickerRow(row.size, 6) { i ->
+                        val e = row[i]
+                        val selected = e == emoji
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (selected) AccentSoft else FieldBg)
+                                .border(1.dp, if (selected) Accent else Line, RoundedCornerShape(10.dp))
+                                .clickable(onClickLabel = "이모티콘 $e") { emoji = if (selected) null else e },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(e, fontSize = 18.sp)
+                        }
+                    }
+                }
+
+                SectionLabel("배경색")
+                val palette: List<Long?> = listOf(null) + TOPIC_COLORS
+                palette.chunked(5).forEach { row ->
+                    PickerRow(row.size, 5) { i ->
+                        val c = row[i]
+                        val selected = c == color
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .background(c?.let { Color(it) } ?: Sheet)
+                                .border(if (selected) 2.dp else 1.dp, if (selected) Accent else Line, CircleShape)
+                                .clickable(onClickLabel = if (c == null) "기본 배경" else "배경색") { color = c },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            when {
+                                selected -> Text("✓", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ink)
+                                c == null -> Text("기본", fontSize = 10.sp, color = Muted)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(title, emoji, color) }, enabled = canSave) {
+                Text("저장", color = if (canSave) Accent else Muted)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("취소", color = Muted) }
+        },
+        containerColor = Sheet,
+    )
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text,
+        fontSize = 12.5.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = Muted,
+        modifier = Modifier.padding(top = 6.dp),
+    )
+}
+
+/** 정사각형 칸 [columns] 개를 한 줄에 고르게 놓는다. 칸이 [count] 개보다 모자라면 빈자리로 둔다. */
+@Composable
+private fun PickerRow(count: Int, columns: Int, cell: @Composable (Int) -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        repeat(columns) { i ->
+            Box(Modifier.weight(1f).aspectRatio(1f)) {
+                if (i < count) cell(i)
+            }
+        }
+    }
 }
 
 /** 주제를 옮길 폴더를 고른다. 맨 위 항목은 폴더 밖. 지금 들어 있는 곳은 표시만 하고 누를 수 없다. */
@@ -615,7 +793,7 @@ private fun RecentTopicRow(topic: Topic, folderName: String?, onClick: () -> Uni
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Badge(text = topic.title.trim().take(1).uppercase().ifEmpty { "語" })
+            Badge(text = topic.badgeText)
 
             Column(Modifier.weight(1f)) {
                 Text("최근 본 주제", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Accent)

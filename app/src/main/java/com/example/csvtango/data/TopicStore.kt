@@ -68,6 +68,8 @@ class TopicStore(context: Context) {
         put("title", title)
         put("createdAt", createdAt)
         if (folderId != null) put("folderId", folderId)
+        if (emoji != null) put("emoji", emoji)
+        if (color != null) put("color", color)
         put("cards", JSONArray().apply { cards.forEach { put(it.toJson()) } })
     }
 
@@ -88,6 +90,8 @@ class TopicStore(context: Context) {
             title = optString("title"),
             createdAt = optLong("createdAt"),
             folderId = optString("folderId").ifEmpty { null },
+            emoji = optString("emoji").ifEmpty { null },
+            color = if (has("color")) optLong("color") else null,
             cards = (0 until cardsJson.length()).mapNotNull { cardsJson.optJSONObject(it)?.toCard() },
         )
     }

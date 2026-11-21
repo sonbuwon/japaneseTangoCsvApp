@@ -178,7 +178,7 @@ fun QuizSetupScreen(
                             onClick = { onToggleBookmarkTopic(topic.id) },
                             background = GoldBg,
                             border = GoldLine,
-                            badge = { Badge(topic.title.trim().take(1).uppercase().ifEmpty { "語" }, GoldBg, Gold) },
+                            badge = { Badge(topic.badgeText, GoldBg, Gold) },
                             title = topic.title,
                             subtitle = "북마크 ${count}개 / 단어 ${topic.cards.size}개",
                         )
@@ -205,9 +205,10 @@ fun QuizSetupScreen(
                         checked = topic.id in selectedSources,
                         enabled = true,
                         onClick = { onToggle(topic.id) },
-                        badge = { Badge(topic.title.trim().take(1).uppercase().ifEmpty { "語" }) },
+                        badge = { Badge(topic.badgeText) },
                         title = topic.title,
                         subtitle = "단어 ${topic.cards.size}개",
+                        background = topic.color?.let { Color(it) } ?: Sheet,
                     )
                 }
             }

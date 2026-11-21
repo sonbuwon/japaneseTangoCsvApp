@@ -129,7 +129,7 @@ private fun TopicBookmarkItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Badge(text = topic.title.trim().take(1).uppercase().ifEmpty { "語" })
+            Badge(text = topic.badgeText)
             Column(Modifier.weight(1f)) {
                 Text(
                     topic.title,

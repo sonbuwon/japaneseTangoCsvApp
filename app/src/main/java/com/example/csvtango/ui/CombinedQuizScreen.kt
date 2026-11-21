@@ -46,6 +46,7 @@ import com.example.csvtango.ui.theme.Line
 import com.example.csvtango.ui.theme.Muted
 import com.example.csvtango.ui.theme.Paper
 import com.example.csvtango.ui.theme.Sheet
+import androidx.compose.ui.graphics.Color
 import com.example.csvtango.ui.theme.StarOff
 
 /** 종합 시험 설정. 목록을 여러 개 고르고 문제 수를 적는다. 순서는 항상 무작위. */
@@ -154,9 +155,10 @@ fun CombinedQuizScreen(
                         checked = topic.id in selected,
                         enabled = true,
                         onClick = { onToggle(topic.id) },
-                        badge = { Badge(topic.title.trim().take(1).uppercase().ifEmpty { "語" }) },
+                        badge = { Badge(topic.badgeText) },
                         title = topic.title,
                         subtitle = "단어 ${topic.cards.size}개",
+                        background = topic.color?.let { Color(it) } ?: Sheet,
                     )
                 }
             }

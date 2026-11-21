@@ -125,7 +125,7 @@ private fun Screens(vm: TangoViewModel, speaker: JapaneseSpeaker) {
             editing = vm.editing,
             onToggleEdit = { vm.editing = !vm.editing },
             onMove = vm::moveTopic,
-            onRename = vm::renameTopic,
+            onEditTopic = vm::editTopic,
             onDelete = vm::deleteTopic,
             onMoveToFolder = vm::moveTopicToFolder,
             onCreateFolder = vm::createFolder,

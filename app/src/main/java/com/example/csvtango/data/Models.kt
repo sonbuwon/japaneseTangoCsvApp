@@ -25,7 +25,82 @@ data class Topic(
     val createdAt: Long,
     /** 들어 있는 [Folder] 의 id. null 이면 폴더 밖(암기 화면 맨 위)에 있다. */
     val folderId: String? = null,
+    /** 표시 칸에 제목 앞글자 대신 보여 줄 이모티콘 하나. null 이면 제목 앞글자. */
+    val emoji: String? = null,
+    /** 암기 목록에서 주제 칸의 배경색(ARGB). null 이면 기본 배경. */
+    val color: Long? = null,
+) {
+    /** 표시 칸에 보여 줄 글자. 이모티콘이 있으면 이모티콘, 없으면 제목 앞글자. */
+    val badgeText: String
+        get() = emoji ?: title.trim().take(1).uppercase().ifEmpty { "語" }
+}
+
+/** 주제 배경으로 고를 수 있는 색(ARGB). 어두운 바탕에서 본문 글자가 잘 읽히도록 어둡게 눌렀다. */
+val TOPIC_COLORS: List<Long> = listOf(
+    0xFF4A2E33, // 빨강
+    0xFF4A3A2A, // 주황
+    0xFF46422A, // 노랑
+    0xFF2A4235, // 초록
+    0xFF27403F, // 청록
+    0xFF2A3A52, // 파랑
+    0xFF3B3150, // 보라
+    0xFF4A2F42, // 분홍
 )
+
+/**
+ * [input] 에 들어 있는 이모티콘 가운데 마지막 하나를 돌려준다. 없으면 null.
+ *
+ * 피부색·성별·가족(ZWJ)처럼 여러 코드포인트로 이루어진 이모티콘도 하나로 친다.
+ * 이모티콘 입력칸에 새로 고른 이모티콘만 남겨, 한 번에 하나만 설정되게 할 때 쓴다.
+ */
+fun lastEmoji(input: String): String? {
+    var last: String? = null
+    var i = 0
+    while (i < input.length) {
+        val start = i
+        val base = input.codePointAt(i)
+        i += Character.charCount(base)
+        var keycap = false
+
+        // 국기: 지역 표시 문자 두 개가 한 쌍
+        if (isRegionalIndicator(base) && i < input.length && isRegionalIndicator(input.codePointAt(i))) {
+            i += Character.charCount(input.codePointAt(i))
+        }
+        while (i < input.length) {
+            val cp = input.codePointAt(i)
+            when {
+                cp == ZWJ -> {
+                    i += Character.charCount(cp)
+                    if (i < input.length) i += Character.charCount(input.codePointAt(i))
+                }
+                cp == KEYCAP -> { keycap = true; i += Character.charCount(cp) }
+                isEmojiExtender(cp) -> i += Character.charCount(cp)
+                else -> break
+            }
+        }
+        if (keycap || isEmojiBase(base)) last = input.substring(start, i)
+    }
+    return last
+}
+
+private const val ZWJ = 0x200D
+private const val KEYCAP = 0x20E3
+
+private fun isRegionalIndicator(cp: Int) = cp in 0x1F1E6..0x1F1FF
+
+/** 앞 글자에 붙어 한 이모티콘을 이루는 문자: 이체 선택자, 피부색, 태그(지역 깃발). */
+private fun isEmojiExtender(cp: Int) =
+    cp == 0xFE0F || cp == 0xFE0E || cp in 0x1F3FB..0x1F3FF || cp in 0xE0020..0xE007F
+
+private fun isEmojiBase(cp: Int) =
+    cp in 0x1F000..0x1FAFF ||   // 대부분의 그림 이모티콘·국기
+    cp in 0x2600..0x27BF ||     // ☀ ☕ ✈ ✨ ❤ 등
+    cp in 0x2300..0x23FF ||     // ⌚ ⏰ 등
+    cp in 0x2B00..0x2BFF ||     // ⭐ ⬆ 등
+    cp in 0x2190..0x21FF ||     // ↔ ↩ 등
+    cp == 0x00A9 || cp == 0x00AE || cp == 0x203C || cp == 0x2049 ||
+    cp == 0x2122 || cp == 0x2139 || cp == 0x3030 || cp == 0x303D ||
+    cp == 0x3297 || cp == 0x3299
 
 /** 북마크를 하나 더 켜서 전체 개수가 [count] 가 됐을 때 알려 줄 내용. 10, 20, 30… 에 닿을 때마다 만들어진다. */
 data class BookmarkMilestone(val count: Int)
